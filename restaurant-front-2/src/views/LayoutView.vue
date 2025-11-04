@@ -5,6 +5,7 @@ export const description = "A sidebar with submenus."
 
 <script setup lang="ts">
 import AppSidebar from "@/components/AppSidebar.vue"
+import ThemeToggle from "@/components/ThemeToggle.vue"
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -26,7 +27,7 @@ import {
     <AppSidebar />
     <SidebarInset>
       <header class="flex h-16 shrink-0 items-center gap-2 border-b">
-        <div class="flex items-center gap-2 px-3">
+        <div class="flex items-center gap-2 px-3 flex-1">
           <SidebarTrigger />
           <Separator orientation="vertical" class="mr-2 h-4" />
           <Breadcrumb>
@@ -42,6 +43,9 @@ import {
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+        </div>
+        <div class="px-3">
+          <ThemeToggle />
         </div>
       </header>
       <router-view/>

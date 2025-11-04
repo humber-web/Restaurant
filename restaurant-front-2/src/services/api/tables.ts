@@ -13,12 +13,23 @@ export const tablesApi = {
   },
 
   async createTable(data: Omit<Table, 'tableid'>): Promise<Table> {
-    const response = await api.post('/table/register/', data)
+    const payload = {
+      ...data,
+      model: "table",
+      operation: "CREATE",
+    };
+    const response = await api.post('/table/register/', payload)
     return response.data
   },
 
   async updateTable(id: number, data: Partial<Table>): Promise<Table> {
-    const response = await api.put(`/table/${id}/update/`, data)
+    const payload = {
+      ...data,
+      model: "table",
+      operation: "UPDATE",
+      object_id: id
+    };
+    const response = await api.put(`/table/${id}/update/`, payload)
     return response.data
   },
 

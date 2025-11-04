@@ -1,4 +1,5 @@
 <script setup lang="ts">
+
 // Gestão de produtos
 </script>
 
