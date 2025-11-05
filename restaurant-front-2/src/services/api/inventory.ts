@@ -15,7 +15,7 @@ export const inventoryApi = {
   async createItem(data: Omit<InventoryItem, 'itemID'>): Promise<InventoryItem> {
     const payload = {
       ...data,
-      model: 'inventoryitemn',
+      model: 'inventoryitem',
       operation: 'CREATE',
     }
     const response = await api.post('/inventory_item/register/', payload)
@@ -25,7 +25,7 @@ export const inventoryApi = {
   async updateItem(id: number, data: Partial<InventoryItem>): Promise<InventoryItem> {
     const payload = {
       ...data,
-      model: 'inventoryitemn',
+      model: 'inventoryitem',
       operation: 'UPDATE',
       object_id: String(id)
     }
