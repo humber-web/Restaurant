@@ -3,6 +3,7 @@ import { ref, watch } from 'vue'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -36,23 +37,38 @@ const emit = defineEmits<{
 }>()
 
 const username = ref('')
+const firstName = ref('')
+const lastName = ref('')
 const email = ref('')
 const password = ref('')
 const selectedGroup = ref('')
+const isActive = ref(true)
+const isStaff = ref(false)
+const isSuperuser = ref(false)
 const isSubmitting = ref(false)
 
 watch(() => props.open, (isOpen) => {
   if (isOpen && props.user) {
     username.value = props.user.username
+    firstName.value = props.user.first_name || ''
+    lastName.value = props.user.last_name || ''
     email.value = props.user.email
     password.value = '' // Don't pre-fill password on edit
+    isActive.value = props.user.is_active ?? true
+    isStaff.value = props.user.is_staff ?? false
+    isSuperuser.value = props.user.is_superuser ?? false
     // Get the first group name if available
     selectedGroup.value = props.groups.find(g => props.user?.groups.includes(g.id))?.name || ''
   } else if (isOpen) {
     username.value = ''
+    firstName.value = ''
+    lastName.value = ''
     email.value = ''
     password.value = ''
     selectedGroup.value = ''
+    isActive.value = true
+    isStaff.value = false
+    isSuperuser.value = false
   }
 })
 
@@ -68,15 +84,25 @@ async function handleSubmit(e: Event) {
     if (props.mode === 'create') {
       await emit('submit', {
         username: username.value.trim(),
+        first_name: firstName.value.trim(),
+        last_name: lastName.value.trim(),
         email: email.value.trim(),
         password: password.value,
         group: selectedGroup.value || undefined,
+        is_active: isActive.value,
+        is_staff: isStaff.value,
+        is_superuser: isSuperuser.value,
       } as CreateUserPayload)
     } else {
-      // For edit, only send changed fields
+      // For edit, send all fields
       const updateData: Partial<User> = {
         username: username.value.trim(),
+        first_name: firstName.value.trim(),
+        last_name: lastName.value.trim(),
         email: email.value.trim(),
+        is_active: isActive.value,
+        is_staff: isStaff.value,
+        is_superuser: isSuperuser.value,
       }
       // Only include password if it was changed
       if (password.value) {
@@ -87,9 +113,14 @@ async function handleSubmit(e: Event) {
     emit('update:open', false)
     // Reset form
     username.value = ''
+    firstName.value = ''
+    lastName.value = ''
     email.value = ''
     password.value = ''
     selectedGroup.value = ''
+    isActive.value = true
+    isStaff.value = false
+    isSuperuser.value = false
   } catch (error) {
     // Error handled by parent, keep form open
     console.error('Form submission error:', error)
@@ -102,9 +133,14 @@ function handleOpenChange(open: boolean) {
   emit('update:open', open)
   if (!open) {
     username.value = ''
+    firstName.value = ''
+    lastName.value = ''
     email.value = ''
     password.value = ''
     selectedGroup.value = ''
+    isActive.value = true
+    isStaff.value = false
+    isSuperuser.value = false
   }
 }
 </script>
@@ -119,7 +155,25 @@ function handleOpenChange(open: boolean) {
         </DialogDescription>
       </DialogHeader>
       <form @submit="handleSubmit">
-        <div class="grid gap-4 py-4">
+        <div class="grid gap-4 py-4 max-h-[60vh] overflow-y-auto">
+          <div class="grid grid-cols-2 gap-4">
+            <div class="grid gap-2">
+              <Label for="first-name">Primeiro Nome</Label>
+              <Input
+                id="first-name"
+                v-model="firstName"
+                placeholder="João"
+              />
+            </div>
+            <div class="grid gap-2">
+              <Label for="last-name">Último Nome</Label>
+              <Input
+                id="last-name"
+                v-model="lastName"
+                placeholder="Silva"
+              />
+            </div>
+          </div>
           <div class="grid gap-2">
             <Label for="username">Username</Label>
             <Input
@@ -169,6 +223,32 @@ function handleOpenChange(open: boolean) {
                 </SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <!-- Permissions Section -->
+          <div class="border-t pt-4 space-y-4">
+            <h4 class="text-sm font-medium">Permissões</h4>
+            <div class="flex items-center space-x-2">
+              <Checkbox id="is-active" :checked="isActive" @update:checked="isActive = $event" />
+              <Label for="is-active" class="text-sm font-normal cursor-pointer">
+                Ativo
+                <span class="text-xs text-muted-foreground ml-1">(pode fazer login)</span>
+              </Label>
+            </div>
+            <div class="flex items-center space-x-2">
+              <Checkbox id="is-staff" :checked="isStaff" @update:checked="isStaff = $event" />
+              <Label for="is-staff" class="text-sm font-normal cursor-pointer">
+                Staff
+                <span class="text-xs text-muted-foreground ml-1">(acesso ao painel admin)</span>
+              </Label>
+            </div>
+            <div class="flex items-center space-x-2">
+              <Checkbox id="is-superuser" :checked="isSuperuser" @update:checked="isSuperuser = $event" />
+              <Label for="is-superuser" class="text-sm font-normal cursor-pointer">
+                Superuser
+                <span class="text-xs text-muted-foreground ml-1">(todas as permissões)</span>
+              </Label>
+            </div>
           </div>
         </div>
         <DialogFooter>

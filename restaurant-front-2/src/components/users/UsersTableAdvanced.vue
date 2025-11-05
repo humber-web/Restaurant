@@ -51,6 +51,24 @@ const columns: ColumnDef<UserWithGroupNames>[] = [
     },
   },
   {
+    accessorKey: 'first_name',
+    header: createSortableHeader('Primeiro Nome', 'first_name'),
+    cell: ({ row }) => h('span', { class: 'text-sm' }, row.getValue('first_name') || '-'),
+    enableHiding: true,
+    meta: {
+      label: 'Primeiro Nome',
+    },
+  },
+  {
+    accessorKey: 'last_name',
+    header: createSortableHeader('Último Nome', 'last_name'),
+    cell: ({ row }) => h('span', { class: 'text-sm' }, row.getValue('last_name') || '-'),
+    enableHiding: true,
+    meta: {
+      label: 'Último Nome',
+    },
+  },
+  {
     accessorKey: 'email',
     header: createSortableHeader('Email', 'email'),
     cell: ({ row }) => h('span', { class: 'text-sm' }, row.getValue('email')),
@@ -106,7 +124,10 @@ const columns: ColumnDef<UserWithGroupNames>[] = [
       return h(
         'span',
         {
-          class: 'text-sm',
+          class: [
+            'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
+            isStaff ? 'bg-blue-100 text-blue-800' : 'bg-gray-100 text-gray-800',
+          ],
         },
         isStaff ? 'Sim' : 'Não'
       )
@@ -114,6 +135,41 @@ const columns: ColumnDef<UserWithGroupNames>[] = [
     enableHiding: true,
     meta: {
       label: 'Staff',
+    },
+  },
+  {
+    accessorKey: 'is_superuser',
+    header: createSortableHeader('Superuser', 'is_superuser'),
+    cell: ({ row }) => {
+      const isSuperuser = row.getValue('is_superuser')
+      return h(
+        'span',
+        {
+          class: [
+            'inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold',
+            isSuperuser ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800',
+          ],
+        },
+        isSuperuser ? 'Sim' : 'Não'
+      )
+    },
+    enableHiding: true,
+    meta: {
+      label: 'Superuser',
+    },
+  },
+  {
+    accessorKey: 'date_joined',
+    header: createSortableHeader('Data de Registo', 'date_joined'),
+    cell: ({ row }) => {
+      const dateStr = row.getValue('date_joined') as string
+      if (!dateStr) return h('span', { class: 'text-sm text-muted-foreground' }, '-')
+      const date = new Date(dateStr)
+      return h('span', { class: 'text-sm' }, date.toLocaleDateString('pt-PT'))
+    },
+    enableHiding: true,
+    meta: {
+      label: 'Data de Registo',
     },
   },
   createActionsColumn('actions', (user: User) => {
