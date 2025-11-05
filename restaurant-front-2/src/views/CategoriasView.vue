@@ -1,16 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Plus } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import CategoriesTableAdvanced from '@/components/categories/CategoriesTableAdvanced.vue'
 import CategoryForm from '@/components/categories/CategoryForm.vue'
 import DeleteCategoryDialog from '@/components/categories/DeleteCategoryDialog.vue'
-import { menuApi } from '@/services/api'
 import type { MenuCategory } from '@/types/models'
+import { useMenuStore } from '@/stores/menu'
 
-const categories = ref<MenuCategory[]>([])
-const isLoading = ref(false)
-const error = ref<string | null>(null)
+const menuStore = useMenuStore()
+
 const formOpen = ref(false)
 const deleteDialogOpen = ref(false)
 const selectedCategory = ref<MenuCategory | null>(null)
@@ -18,44 +17,26 @@ const formMode = ref<'create' | 'edit'>('create')
 const toastMessage = ref<string | null>(null)
 const toastVariant = ref<'success' | 'error'>('success')
 
-onMounted(() => {
-  fetchCategories()
-})
+// Use store state
+const categories = computed(() => menuStore.categories)
+const isLoading = computed(() => menuStore.isLoading)
 
-async function fetchCategories() {
-  isLoading.value = true
-  error.value = null
+onMounted(async () => {
   try {
-    categories.value = await menuApi.getCategories()
+    await menuStore.fetchCategories() // Smart fetch - only loads if empty
   } catch (err: any) {
-    error.value = err?.message || 'Erro ao carregar categorias'
     showToast('Erro ao carregar categorias', 'error')
-  } finally {
-    isLoading.value = false
   }
-}
-
-async function handleCreate(data: Omit<MenuCategory, 'categoryID'>) {
-  const newCategory = await menuApi.createCategory(data)
-  categories.value = [...categories.value, newCategory]
-  showToast('Categoria criada com sucesso', 'success')
-}
-
-async function handleUpdate(data: Omit<MenuCategory, 'categoryID'>) {
-  if (!selectedCategory.value) return
-  const updated = await menuApi.updateCategory(selectedCategory.value.categoryID, data)
-  categories.value = categories.value.map(cat => 
-    cat.categoryID === selectedCategory.value!.categoryID ? updated : cat
-  )
-  showToast('Categoria atualizada com sucesso', 'success')
-}
+})
 
 async function handleFormSubmit(data: Omit<MenuCategory, 'categoryID'>) {
   try {
     if (formMode.value === 'create') {
-      await handleCreate(data)
-    } else {
-      await handleUpdate(data)
+      await menuStore.createCategory(data)
+      showToast('Categoria criada com sucesso', 'success')
+    } else if (selectedCategory.value) {
+      await menuStore.updateCategory(selectedCategory.value.categoryID, data)
+      showToast('Categoria atualizada com sucesso', 'success')
     }
   } catch (error: any) {
     showToast(
@@ -68,8 +49,7 @@ async function handleFormSubmit(data: Omit<MenuCategory, 'categoryID'>) {
 
 async function handleDelete(id: number) {
   try {
-    await menuApi.deleteCategory(id)
-    categories.value = categories.value.filter(cat => cat.categoryID !== id)
+    await menuStore.deleteCategory(id)
     showToast('Categoria eliminada com sucesso', 'success')
   } catch (error: any) {
     showToast('Erro ao eliminar categoria', 'error')

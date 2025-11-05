@@ -1,17 +1,15 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Plus } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
-import { tablesApi } from '@/services/api';
 import type { Table } from '@/types/models';
 import TablesTableAdvanced from '@/components/tables/TablesTableAdvanced.vue'
 import TablesForm from '@/components/tables/TablesForm.vue'
 import DeleteTablesDialog from '@/components/tables/DeleteTablesDialog.vue'
-// Configuração de mesas
+import { useTablesStore } from '@/stores/tables'
 
-const tables = ref<Table[]>([]);
-const isLoading = ref(false);
-const error = ref<string | null>(null);
+const tablesStore = useTablesStore()
+
 const formOpen = ref(false);
 const deleteDialogOpen = ref(false);
 const selectedTable = ref<Table | null>(null);
@@ -19,23 +17,17 @@ const formMode = ref<'create' | 'edit'>('create');
 const toastMessage = ref<string | null>(null)
 const toastVariant = ref<'success' | 'error'>('success')
 
-
+// Use store state
+const tables = computed(() => tablesStore.tables)
+const isLoading = computed(() => tablesStore.isLoading)
 
 onMounted(async () => {
-  fetchTables();
-});
-
-async function fetchTables() {
-  isLoading.value = true;
-  error.value = null;
   try {
-    tables.value = await tablesApi.getTables();
+    await tablesStore.fetchTables() // Smart fetch - only loads if empty
   } catch (err: any) {
-    error.value = err?.message || 'Erro ao carregar mesas';
-  } finally {
-    isLoading.value = false;
+    showToast('Erro ao carregar mesas', 'error')
   }
-}
+});
 
 function openCreateDialog() {
   selectedTable.value = null
@@ -54,27 +46,14 @@ function openDeleteDialog(table: Table) {
   deleteDialogOpen.value = true
 }
 
-async function handleCreate(data: Omit<Table, 'tableid'>) {
-  const newTable = await tablesApi.createTable(data)
-  tables.value = [...tables.value, newTable]
-  showToast('Mesa criada com sucesso', 'success')
-}
-
-async function handleUpdate(data: Omit<Table, 'tableid'>) {
-  if (!selectedTable.value) return
-  const updated = await tablesApi.updateTable(selectedTable.value.tableid, data)
-  tables.value = tables.value.map(table =>
-    table.tableid === selectedTable.value!.tableid ? updated : table
-  )
-  showToast('Mesa atualizada com sucesso', 'success')
-}
-
 async function handleFormSubmit(data: Omit<Table, 'tableid'>) {
   try {
     if (formMode.value === 'create') {
-      await handleCreate(data);
-    } else {
-      await handleUpdate(data);
+      await tablesStore.createTable(data)
+      showToast('Mesa criada com sucesso', 'success')
+    } else if (selectedTable.value) {
+      await tablesStore.updateTable(selectedTable.value.tableid, data)
+      showToast('Mesa atualizada com sucesso', 'success')
     }
   } catch (error: any) {
     showToast(
@@ -87,8 +66,7 @@ async function handleFormSubmit(data: Omit<Table, 'tableid'>) {
 
 async function handleDelete(id: number) {
   try {
-    await tablesApi.deleteTable(id)
-    tables.value = tables.value.filter(table => table.tableid !== id)
+    await tablesStore.deleteTable(id)
     showToast('Mesa eliminada com sucesso', 'success')
   } catch (error: any) {
     showToast('Erro ao eliminar mesa', 'error')

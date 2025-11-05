@@ -55,12 +55,23 @@ export const menuApi = {
   },
 
   async createItem(data: Omit<MenuItem, 'itemID'>): Promise<MenuItem> {
-    const response = await api.post('/menu_item/register/', data)
+    const payload = {
+      ...data,
+      model: 'menuitem',
+      operation: 'CREATE',
+    }
+    const response = await api.post('/menu_item/register/', payload)
     return response.data
   },
 
   async updateItem(id: number, data: Partial<MenuItem>): Promise<MenuItem> {
-    const response = await api.put(`/menu_item/${id}/update/`, data)
+    const payload = {
+      ...data,
+      model: 'menuitem',
+      operation: 'UPDATE',
+      object_id: String(id)
+    }
+    const response = await api.put(`/menu_item/${id}/update/`, payload)
     return response.data
   },
 

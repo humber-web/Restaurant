@@ -16,7 +16,12 @@ export const useTablesStore = defineStore('tables', () => {
     tables.value.filter((table) => table.status === 'OC')
   )
 
-  async function fetchTables() {
+  async function fetchTables(force = false) {
+    // Smart fetching: skip if already loaded (unless forced)
+    if (!force && tables.value.length > 0) {
+      return
+    }
+
     isLoading.value = true
     error.value = null
 

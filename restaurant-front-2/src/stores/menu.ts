@@ -10,7 +10,13 @@ export const useMenuStore = defineStore('menu', () => {
   const isLoading = ref(false)
   const error = ref<string | null>(null)
 
-  async function fetchCategories() {
+  async function fetchCategories(force = false) {
+    // Smart fetching: skip if already loaded (unless forced)
+    if (!force && categories.value.length > 0) {
+      return
+    }
+
+    console.log('🔄 Fetching categories from API...')
     isLoading.value = true
     error.value = null
 
@@ -24,7 +30,12 @@ export const useMenuStore = defineStore('menu', () => {
     }
   }
 
-  async function fetchItems() {
+  async function fetchItems(force = false) {
+    // Smart fetching: skip if already loaded (unless forced)
+    if (!force && items.value.length > 0) {
+      return
+    }
+
     isLoading.value = true
     error.value = null
 
@@ -103,6 +114,40 @@ export const useMenuStore = defineStore('menu', () => {
     }
   }
 
+  async function updateCategory(id: number, data: Partial<MenuCategory>) {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      const updated = await menuApi.updateCategory(id, data)
+      const index = categories.value.findIndex((cat) => cat.categoryID === id)
+      if (index !== -1) {
+        categories.value[index] = updated
+      }
+      return updated
+    } catch (err: any) {
+      error.value = err.message
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  async function deleteCategory(id: number) {
+    isLoading.value = true
+    error.value = null
+
+    try {
+      await menuApi.deleteCategory(id)
+      categories.value = categories.value.filter((cat) => cat.categoryID !== id)
+    } catch (err: any) {
+      error.value = err.message
+      throw err
+    } finally {
+      isLoading.value = false
+    }
+  }
+
   async function deleteItem(id: number) {
     isLoading.value = true
     error.value = null
@@ -128,6 +173,8 @@ export const useMenuStore = defineStore('menu', () => {
     fetchItems,
     fetchItemsByCategory,
     createCategory,
+    updateCategory,
+    deleteCategory,
     createItem,
     updateItem,
     deleteItem,
