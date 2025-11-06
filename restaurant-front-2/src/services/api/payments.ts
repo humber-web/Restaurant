@@ -1,14 +1,26 @@
 import { api } from './client'
-import type { Payment, ProcessPaymentPayload } from '@/types/models'
+import type { Payment } from '@/types/models'
+
+export interface ProcessPaymentPayload {
+  orderID: number
+  amount: number
+  payment_method: 'CASH' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'ONLINE'
+}
+
+export interface ProcessPaymentResponse {
+  detail: string
+  change_due: string
+  payment: Payment
+}
 
 export const paymentsApi = {
-  async processPayment(data: ProcessPaymentPayload): Promise<Payment> {
-    const response = await api.post('/payment/register/', data)
+  async processPayment(data: ProcessPaymentPayload): Promise<ProcessPaymentResponse> {
+    const response = await api.post('/payment/process/', data)
     return response.data
   },
 
   async getPayments(): Promise<Payment[]> {
-    const response = await api.get('/payment/')
+    const response = await api.get('/payments/')
     return response.data
   },
 

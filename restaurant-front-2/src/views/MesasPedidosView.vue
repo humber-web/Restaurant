@@ -2,6 +2,7 @@
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ordersApi, menuApi, tablesApi } from '@/services/api'
+import { paymentsApi, type ProcessPaymentPayload } from '@/services/api/payments'
 import { useOrdersStore } from '@/stores/orders'
 import type { Order, OrderItem, MenuItem, MenuCategory, Table } from '@/types/models'
 import {
@@ -82,6 +83,11 @@ const showTransferDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showPaymentDialog = ref(false)
 const targetTableId = ref<string>('')
+
+// Payment state
+const paymentMethod = ref<'CASH' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'ONLINE'>('CASH')
+const paymentAmount = ref<string>('')
+const isProcessingPayment = ref(false)
 
 // Computed: Filtered menu items
 const filteredMenuItems = computed(() => {
@@ -460,11 +466,80 @@ async function confirmDelete() {
   }
 }
 
+// Computed: Change due
+const changeDue = computed(() => {
+  if (!currentOrder.value || !paymentAmount.value) return 0
+  const amount = parseFloat(paymentAmount.value) || 0
+  const total = orderTotals.value.grandTotal
+  return Math.max(0, amount - total)
+})
+
 // Payment dialog
 function openPaymentDialog() {
   if (!currentOrder.value) return
+  // Pre-fill with order total
+  paymentAmount.value = orderTotals.value.grandTotal.toFixed(2)
+  paymentMethod.value = 'CASH'
   showPaymentDialog.value = true
-  showToast('Funcionalidade de pagamento em breve', 'success')
+}
+
+async function processPayment() {
+  if (!currentOrder.value || !isMounted.value || isProcessingPayment.value) return
+
+  const amount = parseFloat(paymentAmount.value)
+  if (isNaN(amount) || amount <= 0) {
+    showToast('Por favor insira um valor válido', 'error')
+    return
+  }
+
+  if (amount < orderTotals.value.grandTotal) {
+    showToast('Valor insuficiente para completar o pagamento', 'error')
+    return
+  }
+
+  isProcessingPayment.value = true
+
+  try {
+    const payload: ProcessPaymentPayload = {
+      orderID: currentOrder.value.orderID,
+      amount: amount,
+      payment_method: paymentMethod.value
+    }
+
+    const response = await paymentsApi.processPayment(payload)
+
+    if (!isMounted.value) return
+
+    showPaymentDialog.value = false
+
+    // Show success with change due
+    const change = parseFloat(response.change_due)
+    if (change > 0 && paymentMethod.value === 'CASH') {
+      showToast(`Pagamento processado! Troco: €${change.toFixed(2)}`, 'success')
+    } else {
+      showToast('Pagamento processado com sucesso!', 'success')
+    }
+
+    // Refresh order data (will show as PAID via WebSocket)
+    await ordersStore.fetchOrders()
+
+    // Navigate back to tables after short delay
+    setTimeout(() => {
+      router.push('/mesas')
+    }, 2000)
+  } catch (error: any) {
+    if (!isMounted.value) return
+
+    // Handle specific error messages from backend
+    const errorMessage = error.response?.data?.error || error.message || 'Erro ao processar pagamento'
+    const hint = error.response?.data?.hint
+
+    showToast(hint ? `${errorMessage}\n${hint}` : errorMessage, 'error')
+  } finally {
+    if (isMounted.value) {
+      isProcessingPayment.value = false
+    }
+  }
 }
 
 // Get item name from menu
@@ -854,6 +929,106 @@ onUnmounted(() => {
         <DialogFooter>
           <Button variant="outline" @click="showDeleteDialog = false">Cancelar</Button>
           <Button variant="destructive" @click="confirmDelete">Sim, Cancelar Pedido</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Payment Dialog -->
+    <Dialog v-model:open="showPaymentDialog">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Processar Pagamento</DialogTitle>
+          <DialogDescription>
+            Pedido #{{ currentOrder?.orderID }} - Mesa {{ tableId }}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div v-if="currentOrder" class="space-y-6 py-4">
+          <!-- Order Summary -->
+          <div class="bg-muted/50 rounded-lg p-4 space-y-2">
+            <div class="flex justify-between text-sm">
+              <span class="text-muted-foreground">Subtotal:</span>
+              <span>€{{ orderTotals.totalAmount.toFixed(2) }}</span>
+            </div>
+            <div class="flex justify-between text-sm">
+              <span class="text-muted-foreground">IVA (15%):</span>
+              <span>€{{ orderTotals.totalIva.toFixed(2) }}</span>
+            </div>
+            <Separator />
+            <div class="flex justify-between text-lg font-bold">
+              <span>Total a Pagar:</span>
+              <span class="text-primary">€{{ orderTotals.grandTotal.toFixed(2) }}</span>
+            </div>
+          </div>
+
+          <!-- Payment Method -->
+          <div class="space-y-2">
+            <Label>Método de Pagamento</Label>
+            <Select v-model="paymentMethod">
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o método" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="CASH">💵 Dinheiro</SelectItem>
+                <SelectItem value="CREDIT_CARD">💳 Cartão de Crédito</SelectItem>
+                <SelectItem value="DEBIT_CARD">💳 Cartão de Débito</SelectItem>
+                <SelectItem value="ONLINE">🌐 Pagamento Online</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <!-- Amount Input -->
+          <div class="space-y-2">
+            <Label>Valor Recebido</Label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
+              <Input
+                v-model="paymentAmount"
+                type="number"
+                step="0.01"
+                min="0"
+                placeholder="0.00"
+                class="pl-8 text-lg font-semibold"
+                :class="{ 'border-red-500': parseFloat(paymentAmount) < orderTotals.grandTotal }"
+              />
+            </div>
+            <p v-if="parseFloat(paymentAmount) < orderTotals.grandTotal" class="text-xs text-red-500">
+              Valor insuficiente
+            </p>
+          </div>
+
+          <!-- Change Due (only for cash) -->
+          <div v-if="paymentMethod === 'CASH' && changeDue > 0" class="bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg p-4">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-medium text-green-900 dark:text-green-200">Troco:</span>
+              <span class="text-2xl font-bold text-green-700 dark:text-green-300">€{{ changeDue.toFixed(2) }}</span>
+            </div>
+          </div>
+
+          <!-- Warning -->
+          <div class="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+            <p class="text-xs text-yellow-900 dark:text-yellow-200">
+              ⚠️ Certifique-se de que possui uma caixa aberta antes de processar o pagamento.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            @click="showPaymentDialog = false"
+            :disabled="isProcessingPayment"
+          >
+            Cancelar
+          </Button>
+          <Button
+            @click="processPayment"
+            :disabled="isProcessingPayment || parseFloat(paymentAmount) < orderTotals.grandTotal"
+          >
+            <CreditCard v-if="!isProcessingPayment" class="mr-2 h-4 w-4" />
+            <span v-if="isProcessingPayment">Processando...</span>
+            <span v-else>Confirmar Pagamento</span>
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
