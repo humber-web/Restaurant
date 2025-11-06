@@ -24,6 +24,16 @@ export const cashRegisterApi = {
     return response.data
   },
 
+  async getOpenRegister(): Promise<CashRegister | null> {
+    try {
+      const response = await api.get('/cash_register/?is_open=true')
+      const registers = response.data
+      return registers.length > 0 ? registers[0] : null
+    } catch {
+      return null
+    }
+  },
+
   async insertMoney(data: InsertMoneyPayload): Promise<void> {
     await api.post('/cash_register/insert_money/', data)
   },
