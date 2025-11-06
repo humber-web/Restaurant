@@ -462,7 +462,7 @@ async function confirmDelete() {
 // Navigate to payment view
 function openPaymentDialog() {
   if (!currentOrder.value) return
-  router.push({ path: '/payment', query: { order: currentOrder.value.orderID } })
+  router.push({ path: '/pagamentos', query: { order: currentOrder.value.orderID } })
 }
 
 // Get item name from menu
