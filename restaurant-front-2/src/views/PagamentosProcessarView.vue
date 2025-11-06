@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ordersApi, cashRegisterApi, menuApi, type Order, type MenuItem } from '@/services/api'
 import { paymentsApi, type ProcessPaymentPayload } from '@/services/api/payments'
 import type { CashRegister } from '@/services/api/cashRegister'
+import type { OrderItem } from '@/types/models'
 import {
   Card,
   CardContent,
@@ -16,6 +17,7 @@ import { Label } from '@/components/ui/label'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
   DialogContent,
@@ -55,9 +57,13 @@ const menuItems = ref<MenuItem[]>([])
 const cashRegister = ref<CashRegister | null>(null)
 const isLoading = ref(true)
 
+// Item selection state
+const selectedItems = ref<Set<number>>(new Set())
+
 // Payment state
 const paymentMethod = ref<'CASH' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'ONLINE'>('CASH')
 const paymentAmount = ref<string>('')
+const useManualAmount = ref(false) // Toggle between item-based and manual amount
 const isProcessingPayment = ref(false)
 const paymentSuccess = ref(false)
 const changeDue = ref<number>(0)
@@ -66,6 +72,22 @@ const changeDue = ref<number>(0)
 const showCashRegisterDialog = ref(false)
 const initialAmount = ref<string>('100.00')
 const isOpeningRegister = ref(false)
+
+// Computed: Selected items total (with IVA)
+const selectedItemsTotal = computed(() => {
+  if (!order.value) return 0
+
+  let subtotal = 0
+  order.value.items.forEach((item) => {
+    if (selectedItems.value.has(item.menu_item)) {
+      subtotal += Number(item.price) * item.quantity
+    }
+  })
+
+  // Apply IVA (15%)
+  const iva = subtotal * 0.15
+  return subtotal + iva
+})
 
 // Computed: Order totals
 const orderTotals = computed(() => {
@@ -83,7 +105,23 @@ const orderTotals = computed(() => {
   }
 })
 
-// Computed: Validation (now allows partial payments)
+// Computed: Selected items count
+const selectedItemsCount = computed(() => selectedItems.value.size)
+
+// Computed: All items selected
+const allItemsSelected = computed(() => {
+  if (!order.value) return false
+  return selectedItems.value.size === order.value.items.length
+})
+
+// Watch selected items and update payment amount
+watch(selectedItemsTotal, (newTotal) => {
+  if (!useManualAmount.value) {
+    paymentAmount.value = newTotal.toFixed(2)
+  }
+})
+
+// Computed: Validation
 const isAmountValid = computed(() => {
   const amount = parseFloat(paymentAmount.value)
   return !isNaN(amount) && amount > 0
@@ -101,8 +139,36 @@ const paymentStatus = computed(() => {
 const calculatedChange = computed(() => {
   if (paymentMethod.value !== 'CASH') return 0
   const amount = parseFloat(paymentAmount.value) || 0
-  return Math.max(0, amount - orderTotals.value.grandTotal)
+  const totalToPay = useManualAmount.value ? orderTotals.value.grandTotal : selectedItemsTotal.value
+  return Math.max(0, amount - totalToPay)
 })
+
+// Toggle item selection
+function toggleItem(menuItemId: number) {
+  if (selectedItems.value.has(menuItemId)) {
+    selectedItems.value.delete(menuItemId)
+  } else {
+    selectedItems.value.add(menuItemId)
+  }
+  // Force reactivity
+  selectedItems.value = new Set(selectedItems.value)
+}
+
+// Select all items
+function selectAllItems() {
+  if (!order.value) return
+  selectedItems.value = new Set(order.value.items.map(item => item.menu_item))
+}
+
+// Deselect all items
+function deselectAllItems() {
+  selectedItems.value = new Set()
+}
+
+// Check if item is selected
+function isItemSelected(menuItemId: number): boolean {
+  return selectedItems.value.has(menuItemId)
+}
 
 // Get item name
 function getItemName(menuItemId: number): string {
@@ -110,9 +176,19 @@ function getItemName(menuItemId: number): string {
   return item?.name || 'Item'
 }
 
+// Switch to manual amount mode
+function enableManualAmount() {
+  useManualAmount.value = true
+}
+
+// Switch to item-based amount mode
+function enableItemBasedAmount() {
+  useManualAmount.value = false
+  paymentAmount.value = selectedItemsTotal.value.toFixed(2)
+}
+
 // Numeric keypad
 function appendNumber(num: string) {
-  // If starts with "0." keep the decimal structure, otherwise replace leading zero
   if (paymentAmount.value === '' || paymentAmount.value === '0') {
     paymentAmount.value = num
   } else {
@@ -138,12 +214,14 @@ function backspace() {
 
 // Quick amount buttons
 function setAmount(percentage: number) {
-  const amount = (orderTotals.value.grandTotal * percentage).toFixed(2)
+  const total = useManualAmount.value ? orderTotals.value.grandTotal : selectedItemsTotal.value
+  const amount = (total * percentage).toFixed(2)
   paymentAmount.value = amount
 }
 
 function setExactAmount() {
-  paymentAmount.value = orderTotals.value.grandTotal.toFixed(2)
+  const total = useManualAmount.value ? orderTotals.value.grandTotal : selectedItemsTotal.value
+  paymentAmount.value = total.toFixed(2)
 }
 
 // Fetch data
@@ -160,8 +238,11 @@ async function fetchData() {
     cashRegister.value = register
     menuItems.value = items
 
-    // Pre-fill payment amount with order total
-    paymentAmount.value = orderTotals.value.grandTotal.toFixed(2)
+    // Select all items by default
+    selectedItems.value = new Set(orderData.items.map(item => item.menu_item))
+
+    // Pre-fill payment amount with selected items total
+    paymentAmount.value = selectedItemsTotal.value.toFixed(2)
 
     // Show dialog if no cash register
     if (!register) {
@@ -210,6 +291,11 @@ function selectPaymentMethod(method: typeof paymentMethod.value) {
 // Process payment
 async function processPayment() {
   if (!order.value || !cashRegister.value || isProcessingPayment.value) return
+
+  if (selectedItemsCount.value === 0 && !useManualAmount.value) {
+    showToast('Selecione pelo menos um item para pagar', 'error')
+    return
+  }
 
   const amount = parseFloat(paymentAmount.value)
   if (isNaN(amount) || amount <= 0) {
@@ -343,11 +429,21 @@ onMounted(() => {
       <div class="space-y-4 overflow-y-auto">
         <Card>
           <CardHeader>
-            <CardTitle>Resumo do Pedido</CardTitle>
+            <div class="flex items-center justify-between">
+              <CardTitle>Itens do Pedido</CardTitle>
+              <div class="flex gap-2">
+                <Button size="sm" variant="outline" @click="selectAllItems()">
+                  Todos
+                </Button>
+                <Button size="sm" variant="outline" @click="deselectAllItems()">
+                  Nenhum
+                </Button>
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
             <div v-if="order" class="space-y-4">
-              <!-- Order Details -->
+              <!-- Order Info -->
               <div class="space-y-2 text-sm">
                 <div class="flex justify-between">
                   <span class="text-muted-foreground">Pedido:</span>
@@ -365,20 +461,31 @@ onMounted(() => {
 
               <Separator />
 
-              <!-- Items List -->
+              <!-- Items List with Checkboxes -->
               <div class="space-y-2">
-                <h3 class="font-semibold text-sm">Itens do Pedido:</h3>
-                <div class="space-y-2 max-h-48 overflow-y-auto">
+                <h3 class="font-semibold text-sm flex items-center gap-2">
+                  Selecione os Itens:
+                  <Badge variant="secondary">{{ selectedItemsCount }}/{{ order.items.length }}</Badge>
+                </h3>
+                <div class="space-y-2 max-h-64 overflow-y-auto">
                   <div
                     v-for="item in order.items"
                     :key="item.menu_item"
-                    class="flex justify-between items-center text-sm py-1"
+                    class="flex items-center gap-3 text-sm py-2 px-2 rounded hover:bg-accent cursor-pointer"
+                    :class="{ 'bg-accent': isItemSelected(item.menu_item) }"
+                    @click="toggleItem(item.menu_item)"
                   >
-                    <div class="flex-1">
-                      <span class="font-medium">{{ getItemName(item.menu_item) }}</span>
-                      <span class="text-muted-foreground ml-2">x{{ item.quantity }}</span>
+                    <Checkbox
+                      :checked="isItemSelected(item.menu_item)"
+                      @click.stop="toggleItem(item.menu_item)"
+                    />
+                    <div class="flex-1 flex justify-between items-center">
+                      <div>
+                        <span class="font-medium">{{ getItemName(item.menu_item) }}</span>
+                        <span class="text-muted-foreground ml-2">x{{ item.quantity }}</span>
+                      </div>
+                      <span class="font-semibold">€{{ (Number(item.price) * item.quantity).toFixed(2) }}</span>
                     </div>
-                    <span class="font-semibold">€{{ (Number(item.price) * item.quantity).toFixed(2) }}</span>
                   </div>
                 </div>
               </div>
@@ -388,17 +495,17 @@ onMounted(() => {
               <!-- Pricing -->
               <div class="space-y-2">
                 <div class="flex justify-between text-sm">
-                  <span class="text-muted-foreground">Subtotal:</span>
-                  <span>€{{ orderTotals.totalAmount.toFixed(2) }}</span>
+                  <span class="text-muted-foreground">Itens Selecionados:</span>
+                  <span class="font-semibold">€{{ selectedItemsTotal.toFixed(2) }}</span>
                 </div>
-                <div class="flex justify-between text-sm">
-                  <span class="text-muted-foreground">IVA (15%):</span>
-                  <span>€{{ orderTotals.totalIva.toFixed(2) }}</span>
+                <div class="flex justify-between text-sm text-muted-foreground">
+                  <span>Total do Pedido:</span>
+                  <span>€{{ orderTotals.grandTotal.toFixed(2) }}</span>
                 </div>
                 <Separator />
                 <div class="flex justify-between text-xl font-bold">
-                  <span>Total a Pagar:</span>
-                  <span class="text-primary">€{{ orderTotals.grandTotal.toFixed(2) }}</span>
+                  <span>A Pagar:</span>
+                  <span class="text-primary">€{{ selectedItemsTotal.toFixed(2) }}</span>
                 </div>
               </div>
             </div>
@@ -481,6 +588,28 @@ onMounted(() => {
             <CardTitle>Valor do Pagamento</CardTitle>
           </CardHeader>
           <CardContent class="space-y-4">
+            <!-- Mode Toggle -->
+            <div class="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                class="flex-1"
+                :class="{ 'bg-accent': !useManualAmount }"
+                @click="enableItemBasedAmount()"
+              >
+                Itens Selecionados
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                class="flex-1"
+                :class="{ 'bg-accent': useManualAmount }"
+                @click="enableManualAmount()"
+              >
+                Valor Manual
+              </Button>
+            </div>
+
             <!-- Quick Amount Buttons -->
             <div class="grid grid-cols-3 gap-2">
               <Button variant="outline" @click="setAmount(0.5)">50%</Button>
@@ -496,7 +625,7 @@ onMounted(() => {
                 <Input
                   v-model="paymentAmount"
                   type="text"
-                  readonly
+                  :readonly="!useManualAmount"
                   class="pl-12 text-4xl font-bold h-20 text-center"
                   :class="{
                     'border-green-500 focus-visible:ring-green-500': paymentStatus === 'full',
@@ -512,8 +641,8 @@ onMounted(() => {
               </div>
             </div>
 
-            <!-- Numeric Keypad -->
-            <div class="grid grid-cols-3 gap-2">
+            <!-- Numeric Keypad (only for manual mode) -->
+            <div v-if="useManualAmount" class="grid grid-cols-3 gap-2">
               <Button variant="outline" size="lg" @click="appendNumber('7')" class="h-14 text-xl">7</Button>
               <Button variant="outline" size="lg" @click="appendNumber('8')" class="h-14 text-xl">8</Button>
               <Button variant="outline" size="lg" @click="appendNumber('9')" class="h-14 text-xl">9</Button>
@@ -533,8 +662,8 @@ onMounted(() => {
               </Button>
             </div>
 
-            <!-- Clear Button -->
-            <Button variant="outline" class="w-full" @click="clearAmount()">Limpar</Button>
+            <!-- Clear Button (only for manual mode) -->
+            <Button v-if="useManualAmount" variant="outline" class="w-full" @click="clearAmount()">Limpar</Button>
 
             <!-- Change Display (Cash Only) -->
             <div
@@ -566,7 +695,7 @@ onMounted(() => {
                 class="flex-1"
                 size="lg"
                 @click="processPayment"
-                :disabled="!isAmountValid || isProcessingPayment || !cashRegister"
+                :disabled="!isAmountValid || isProcessingPayment || !cashRegister || (selectedItemsCount === 0 && !useManualAmount)"
               >
                 <CreditCard v-if="!isProcessingPayment" class="mr-2 h-5 w-5" />
                 <span v-if="isProcessingPayment">Processando...</span>
