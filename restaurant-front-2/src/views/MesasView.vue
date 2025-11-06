@@ -21,6 +21,9 @@ const searchQuery = ref('')
 const statusFilter = ref<'ALL' | 'AV' | 'OC' | 'RE'>('ALL')
 const toastMessage = ref<string | null>(null)
 const toastVariant = ref<'success' | 'error'>('success')
+
+// Cleanup flags
+const isMounted = ref(true)
 let refreshInterval: NodeJS.Timeout | null = null
 
 // Status configuration
@@ -49,6 +52,8 @@ interface TableWithOrder extends Table {
 
 // Computed: tables with their orders
 const tablesWithOrders = computed<TableWithOrder[]>(() => {
+  if (!isMounted.value) return []
+
   try {
     return tablesStore.tables.map(table => {
       // Find active order for this table (not PAID)
@@ -65,6 +70,8 @@ const tablesWithOrders = computed<TableWithOrder[]>(() => {
 
 // Computed: filtered tables
 const filteredTables = computed(() => {
+  if (!isMounted.value) return []
+
   try {
     let result = tablesWithOrders.value
 
@@ -92,6 +99,8 @@ const filteredTables = computed(() => {
 
 // Computed: statistics
 const stats = computed(() => {
+  if (!isMounted.value) return { total: 0, available: 0, occupied: 0, reserved: 0 }
+
   try {
     const all = tablesStore.tables || []
     return {
@@ -108,6 +117,8 @@ const stats = computed(() => {
 
 // Methods
 async function fetchData() {
+  if (!isMounted.value) return
+
   isLoading.value = true
   try {
     // Fetch tables and orders in parallel
@@ -116,20 +127,30 @@ async function fetchData() {
       fetchOrders()
     ])
   } catch (error: any) {
+    if (!isMounted.value) return // Don't update state if unmounted
     console.error('Error fetching data:', error)
     showToast('Erro ao carregar dados: ' + (error?.message || 'Erro desconhecido'), 'error')
   } finally {
-    isLoading.value = false
+    if (isMounted.value) {
+      isLoading.value = false
+    }
   }
 }
 
 async function fetchOrders() {
+  if (!isMounted.value) return
+
   try {
-    orders.value = await ordersApi.getOrders()
+    const fetchedOrders = await ordersApi.getOrders()
+    if (isMounted.value) {
+      orders.value = fetchedOrders
+    }
   } catch (error: any) {
     console.error('Error fetching orders:', error)
     // Don't show error for orders - tables can still be displayed without orders
-    orders.value = []
+    if (isMounted.value) {
+      orders.value = []
+    }
   }
 }
 
@@ -156,30 +177,44 @@ function navigateToTable(tableId: number) {
 }
 
 function setStatusFilter(status: typeof statusFilter.value) {
+  if (!isMounted.value) return
   statusFilter.value = status
 }
 
 function showToast(message: string, variant: 'success' | 'error') {
+  if (!isMounted.value) return
   toastMessage.value = message
   toastVariant.value = variant
   setTimeout(() => {
-    toastMessage.value = null
+    if (isMounted.value) {
+      toastMessage.value = null
+    }
   }, 3000)
 }
 
 // Lifecycle
 onMounted(async () => {
+  isMounted.value = true
+
   try {
     await fetchData()
 
     // Auto-refresh every 30 seconds
-    refreshInterval = setInterval(fetchData, 30000)
+    refreshInterval = setInterval(() => {
+      if (isMounted.value) {
+        fetchData()
+      }
+    }, 30000)
   } catch (error) {
     console.error('Mount error:', error)
   }
 })
 
 onUnmounted(() => {
+  // Mark as unmounted first to prevent any state updates
+  isMounted.value = false
+
+  // Clear interval
   if (refreshInterval) {
     clearInterval(refreshInterval)
     refreshInterval = null
