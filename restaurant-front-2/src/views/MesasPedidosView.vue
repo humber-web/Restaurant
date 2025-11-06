@@ -266,30 +266,45 @@ async function addCartToOrder() {
   if (cartItems.value.size === 0) return
 
   try {
-    const newItems = Array.from(cartItems.value.entries()).map(([menu_item, quantity]) => {
-      const menuItem = menuItems.value.find(m => m.itemID === menu_item)
-      const category = categories.value.find(c => c.categoryID === menuItem?.categoryID)
+    // Merge cart items with existing order items
+    const mergedItems = [...currentOrder.value.items]
 
-      return {
-        menu_item,
-        quantity,
-        price: menuItem?.price || 0,
-        status: '1' as const,
-        to_be_prepared_in: category?.prepared_in || '1',
+    cartItems.value.forEach((cartQuantity, menu_item) => {
+      const existingItemIndex = mergedItems.findIndex(i => i.menu_item === menu_item)
+
+      if (existingItemIndex !== -1) {
+        // Item already exists - sum the quantities
+        mergedItems[existingItemIndex] = {
+          ...mergedItems[existingItemIndex],
+          quantity: mergedItems[existingItemIndex].quantity + cartQuantity
+        }
+      } else {
+        // Item doesn't exist - add as new item
+        const menuItem = menuItems.value.find(m => m.itemID === menu_item)
+        const category = categories.value.find(c => c.categoryID === menuItem?.categoryID)
+
+        mergedItems.push({
+          menu_item,
+          quantity: cartQuantity,
+          price: menuItem?.price || 0,
+          status: '1' as const,
+          to_be_prepared_in: category?.prepared_in || '1',
+        })
       }
     })
 
     const updated = await ordersApi.updateOrderItems(
       currentOrder.value.orderID,
-      [...currentOrder.value.items, ...newItems]
+      mergedItems
     )
 
     if (!isMounted.value) return
 
     currentOrder.value = updated
+    const itemCount = cartItems.value.size
     cartItems.value.clear()
 
-    showToast(`${newItems.length} item(ns) adicionado(s) ao pedido`, 'success')
+    showToast(`${itemCount} item(ns) adicionado(s) ao pedido`, 'success')
   } catch (error: any) {
     if (!isMounted.value) return
     showToast(error.message || 'Erro ao adicionar itens', 'error')
