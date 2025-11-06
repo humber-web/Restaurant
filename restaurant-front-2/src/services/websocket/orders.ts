@@ -10,7 +10,7 @@ class OrderWebSocketService {
   private maxReconnectAttempts = 5
 
   connect() {
-    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://localhost:8000/ws/orders/'
+    const wsUrl = import.meta.env.VITE_WS_URL || 'ws://172.20.10.4:8001/ws/orders/'
 
     try {
       this.ws = new WebSocket(wsUrl)
