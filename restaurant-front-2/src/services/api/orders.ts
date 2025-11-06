@@ -3,7 +3,7 @@ import type { Order, CreateOrderPayload } from '@/types/models'
 
 export const ordersApi = {
   async getOrders(): Promise<Order[]> {
-    const response = await api.get('/order/')
+    const response = await api.get('/orders/')
     return response.data
   },
 
@@ -12,13 +12,29 @@ export const ordersApi = {
     return response.data
   },
 
+  async getOrdersByTable(tableId: number): Promise<Order[]> {
+    const response = await api.get(`/order/?table=${tableId}`)
+    return response.data
+  },
+
   async createOrder(data: CreateOrderPayload): Promise<Order> {
-    const response = await api.post('/order/register/', data)
+    const payload = {
+      ...data,
+      model: 'order',
+      operation: 'CREATE'
+    }
+    const response = await api.post('/order/register/', payload)
     return response.data
   },
 
   async updateOrder(id: number, data: Partial<Order>): Promise<Order> {
-    const response = await api.put(`/order/${id}/update/`, data)
+    const payload = {
+      ...data,
+      model: 'order',
+      operation: 'UPDATE',
+      object_id: String(id)
+    }
+    const response = await api.put(`/order/${id}/update/`, payload)
     return response.data
   },
 
@@ -28,11 +44,11 @@ export const ordersApi = {
   },
 
   async transferItems(data: {
-    from_order: number
-    to_order: number
-    items: Array<{ menu_item: number; quantity: number }>
-  }): Promise<void> {
-    await api.post('/order/transfer/', data)
+    source_order_id: number
+    target_order_id: number
+  }): Promise<Order> {
+    const response = await api.post('/order/transfer/', data)
+    return response.data
   },
 
   async deleteOrder(id: number): Promise<void> {
