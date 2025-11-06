@@ -5,6 +5,7 @@ export interface ProcessPaymentPayload {
   orderID: number
   amount: number
   payment_method: 'CASH' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'ONLINE'
+  selected_item_ids?: number[]  // Optional: menu item IDs that are being paid for
 }
 
 export interface ProcessPaymentResponse {

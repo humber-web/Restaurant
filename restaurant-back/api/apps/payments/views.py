@@ -90,7 +90,8 @@ class ProcessPaymentView(APIView):
         {
             "orderID": 123,
             "amount": 150.00,
-            "payment_method": "CASH" | "CREDIT_CARD" | "DEBIT_CARD" | "ONLINE"
+            "payment_method": "CASH" | "CREDIT_CARD" | "DEBIT_CARD" | "ONLINE",
+            "selected_item_ids": [1, 2, 3]  // Optional: specific order item IDs being paid
         }
 
         Returns:
@@ -111,6 +112,7 @@ class ProcessPaymentView(APIView):
         order_id = request.data.get('orderID')
         amount = request.data.get('amount')
         payment_method = request.data.get('payment_method')
+        selected_item_ids = request.data.get('selected_item_ids', [])  # Optional
 
         # Validate required fields
         if not all([order_id, amount, payment_method]):
@@ -159,6 +161,24 @@ class ProcessPaymentView(APIView):
             processed_by=request.user,
             cash_register=cash_register
         )
+
+        # Track which items were paid (if specified)
+        if selected_item_ids:
+            from .models import PaymentItem
+
+            for item in order.items.all():
+                # Check if this item's menu_item ID is in the selected list
+                if item.menu_item.itemID in selected_item_ids:
+                    # Calculate amount for this specific item (with IVA)
+                    item_subtotal = item.price * item.quantity
+                    item_with_iva = item_subtotal * Decimal('1.15')  # Add 15% IVA
+
+                    PaymentItem.objects.create(
+                        payment=payment,
+                        order_item=item,
+                        quantity_paid=item.quantity,
+                        amount_paid=item_with_iva
+                    )
 
         # Add transaction to cash register
         cash_register.add_transaction(amount, payment_method)

@@ -317,7 +317,9 @@ async function processPayment() {
     const payload: ProcessPaymentPayload = {
       orderID: order.value.orderID,
       amount: amount,
-      payment_method: paymentMethod.value
+      payment_method: paymentMethod.value,
+      // Send selected item IDs (menu_item IDs, not order item IDs)
+      selected_item_ids: !useManualAmount.value ? Array.from(selectedItems.value) : undefined
     }
 
     const response = await paymentsApi.processPayment(payload)
