@@ -49,6 +49,14 @@ class CashRegister(models.Model):
         """Add a transaction to the register."""
         amount = Decimal(amount)
 
+        # Initialize all fields if None to prevent TypeError
+        if self.operations_cash is None:
+            self.operations_cash = Decimal('0.00')
+        if self.operations_card is None:
+            self.operations_card = Decimal('0.00')
+        if self.operations_other is None:
+            self.operations_other = Decimal('0.00')
+
         if payment_method == 'CASH':
             self.operations_cash += amount
         elif payment_method == 'CARD' or payment_method in ['CREDIT_CARD', 'DEBIT_CARD']:
@@ -62,12 +70,20 @@ class CashRegister(models.Model):
 
     def insert_money(self, amount):
         """Insert money into the register."""
+        # Initialize operations_cash if None
+        if self.operations_cash is None:
+            self.operations_cash = Decimal('0.00')
+
         self.operations_cash += amount
         self.final_amount = (self.final_amount or self.initial_amount) + amount
         self.save()
 
     def extract_money(self, amount):
         """Extract money from the register."""
+        # Initialize operations_cash if None
+        if self.operations_cash is None:
+            self.operations_cash = Decimal('0.00')
+
         self.operations_cash -= amount
         self.final_amount = (self.final_amount or self.initial_amount) - amount
         self.save()
