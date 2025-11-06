@@ -291,45 +291,60 @@ interface TableWithOrder extends Table {
 
 // Computed: tables with their orders
 const tablesWithOrders = computed<TableWithOrder[]>(() => {
-  return tablesStore.tables.map(table => {
-    // Find active order for this table (not PAID)
-    const order = orders.value.find(
-      o => o.details.table === table.tableid && o.paymentStatus !== 'PAID'
-    )
-    return { ...table, currentOrder: order }
-  })
+  try {
+    return tablesStore.tables.map(table => {
+      // Find active order for this table (not PAID)
+      const order = orders.value.find(
+        o => o?.details?.table === table.tableid && o?.paymentStatus !== 'PAID'
+      )
+      return { ...table, currentOrder: order }
+    })
+  } catch (error) {
+    console.error('Error computing tables with orders:', error)
+    return []
+  }
 })
 
 // Computed: filtered tables
 const filteredTables = computed(() => {
-  let result = tablesWithOrders.value
+  try {
+    let result = tablesWithOrders.value
 
-  // Filter by status
-  if (statusFilter.value !== 'ALL') {
-    result = result.filter(t => t.status === statusFilter.value)
+    // Filter by status
+    if (statusFilter.value !== 'ALL') {
+      result = result.filter(t => t.status === statusFilter.value)
+    }
+
+    // Filter by search
+    if (searchQuery.value) {
+      result = result.filter(t =>
+        t.tableid.toString().includes(searchQuery.value)
+      )
+    }
+
+    // Sort by table number
+    result = [...result].sort((a, b) => a.tableid - b.tableid)
+
+    return result
+  } catch (error) {
+    console.error('Error filtering tables:', error)
+    return []
   }
-
-  // Filter by search
-  if (searchQuery.value) {
-    result = result.filter(t =>
-      t.tableid.toString().includes(searchQuery.value)
-    )
-  }
-
-  // Sort by table number
-  result = [...result].sort((a, b) => a.tableid - b.tableid)
-
-  return result
 })
 
 // Computed: statistics
 const stats = computed(() => {
-  const all = tablesStore.tables
-  return {
-    total: all.length,
-    available: all.filter(t => t.status === 'AV').length,
-    occupied: all.filter(t => t.status === 'OC').length,
-    reserved: all.filter(t => t.status === 'RE').length,
+  try {
+    const all = tablesStore.tables || []
+    return {
+      total: all.length,
+      available: all.filter(t => t.status === 'AV').length,
+      occupied: all.filter(t => t.status === 'OC').length,
+      reserved: all.filter(t => t.status === 'RE').length,
+    }
+  } catch (error) {
+    console.error('Error computing stats:', error)
+    return { total: 0, available: 0, occupied: 0, reserved: 0 }
   }
 })
 
@@ -343,8 +358,8 @@ async function fetchData() {
       fetchOrders()
     ])
   } catch (error: any) {
-    showToast('Erro ao carregar dados', 'error')
     console.error('Error fetching data:', error)
+    showToast('Erro ao carregar dados: ' + (error?.message || 'Erro desconhecido'), 'error')
   } finally {
     isLoading.value = false
   }
@@ -353,23 +368,33 @@ async function fetchData() {
 async function fetchOrders() {
   try {
     orders.value = await ordersApi.getOrders()
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching orders:', error)
+    // Don't show error for orders - tables can still be displayed without orders
+    orders.value = []
   }
 }
 
 function getTimeElapsed(createdAt: string): string {
-  const now = new Date()
-  const created = new Date(createdAt)
-  const diffMinutes = Math.floor((now.getTime() - created.getTime()) / 60000)
+  try {
+    const now = new Date()
+    const created = new Date(createdAt)
+    const diffMinutes = Math.floor((now.getTime() - created.getTime()) / 60000)
 
-  if (diffMinutes < 60) return `há ${diffMinutes} min`
-  const hours = Math.floor(diffMinutes / 60)
-  return `há ${hours}h`
+    if (diffMinutes < 60) return `há ${diffMinutes} min`
+    const hours = Math.floor(diffMinutes / 60)
+    return `há ${hours}h`
+  } catch (error) {
+    return 'há -- min'
+  }
 }
 
 function navigateToTable(tableId: number) {
-  router.push({ path: '/mesas/pedidos', query: { table: tableId } })
+  try {
+    router.push({ path: '/mesas/pedidos', query: { table: tableId } })
+  } catch (error) {
+    console.error('Navigation error:', error)
+  }
 }
 
 function setStatusFilter(status: typeof statusFilter.value) {
@@ -386,14 +411,21 @@ function showToast(message: string, variant: 'success' | 'error') {
 
 // Lifecycle
 onMounted(async () => {
-  await fetchData()
+  try {
+    await fetchData()
 
-  // Auto-refresh every 30 seconds
-  refreshInterval = setInterval(fetchData, 30000)
+    // Auto-refresh every 30 seconds
+    refreshInterval = setInterval(fetchData, 30000)
+  } catch (error) {
+    console.error('Mount error:', error)
+  }
 })
 
 onUnmounted(() => {
-  if (refreshInterval) clearInterval(refreshInterval)
+  if (refreshInterval) {
+    clearInterval(refreshInterval)
+    refreshInterval = null
+  }
 })
 </script>
 
@@ -488,14 +520,14 @@ onUnmounted(() => {
       <Card
         v-for="table in filteredTables"
         :key="table.tableid"
-        :class="statusConfig[table.status].cardClass"
+        :class="statusConfig[table.status]?.cardClass || 'border'"
         @click="navigateToTable(table.tableid)"
       >
         <CardHeader class="pb-3">
           <div class="flex items-start justify-between">
             <CardTitle class="text-2xl font-bold">Mesa {{ table.tableid }}</CardTitle>
-            <Badge :class="statusConfig[table.status].badgeClass">
-              {{ statusConfig[table.status].label }}
+            <Badge :class="statusConfig[table.status]?.badgeClass || ''">
+              {{ statusConfig[table.status]?.label || table.status }}
             </Badge>
           </div>
         </CardHeader>
@@ -514,7 +546,7 @@ onUnmounted(() => {
             </div>
             <div class="flex items-center justify-between text-sm">
               <span class="text-muted-foreground">Total:</span>
-              <span class="font-bold text-lg">€{{ table.currentOrder.grandTotal.toFixed(2) }}</span>
+              <span class="font-bold text-lg">€{{ table.currentOrder.grandTotal?.toFixed(2) || '0.00' }}</span>
             </div>
             <div class="flex items-center gap-2 text-xs text-muted-foreground">
               <Clock class="h-3 w-3" />
