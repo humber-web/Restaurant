@@ -44,11 +44,21 @@ import {
   Store,
   ArrowLeft,
 } from 'lucide-vue-next'
-import { useToast } from '@/components/ui/toast/use-toast'
 
 const route = useRoute()
 const router = useRouter()
-const { toast } = useToast()
+
+// Toast notifications
+const toastMessage = ref<string | null>(null)
+const toastVariant = ref<'success' | 'error'>('success')
+
+function showToast(message: string, variant: 'success' | 'error' = 'success') {
+  toastMessage.value = message
+  toastVariant.value = variant
+  setTimeout(() => {
+    toastMessage.value = null
+  }, 3000)
+}
 
 // Core data
 const tableId = computed(() => Number(route.query.table))
@@ -193,11 +203,7 @@ async function fetchData() {
     currentOrder.value = tableOrder || null
   } catch (error: any) {
     if (!isMounted.value) return
-    toast({
-      title: 'Erro',
-      description: error.message || 'Erro ao carregar dados',
-      variant: 'destructive',
-    })
+    showToast(error.message || 'Erro ao carregar dados', 'error')
   } finally {
     if (isMounted.value) {
       isLoading.value = false
@@ -241,17 +247,10 @@ async function createOrder() {
     currentOrder.value = newOrder
     cartItems.value.clear()
 
-    toast({
-      title: 'Pedido criado',
-      description: `Pedido #${newOrder.orderID} criado com sucesso`,
-    })
+    showToast(`Pedido #${newOrder.orderID} criado com sucesso`, 'success')
   } catch (error: any) {
     if (!isMounted.value) return
-    toast({
-      title: 'Erro',
-      description: error.message || 'Erro ao criar pedido',
-      variant: 'destructive',
-    })
+    showToast(error.message || 'Erro ao criar pedido', 'error')
   }
 }
 
@@ -290,17 +289,10 @@ async function addCartToOrder() {
     currentOrder.value = updated
     cartItems.value.clear()
 
-    toast({
-      title: 'Itens adicionados',
-      description: `${newItems.length} item(ns) adicionado(s) ao pedido`,
-    })
+    showToast(`${newItems.length} item(ns) adicionado(s) ao pedido`, 'success')
   } catch (error: any) {
     if (!isMounted.value) return
-    toast({
-      title: 'Erro',
-      description: error.message || 'Erro ao adicionar itens',
-      variant: 'destructive',
-    })
+    showToast(error.message || 'Erro ao adicionar itens', 'error')
   }
 }
 
@@ -324,11 +316,7 @@ async function updateItemQuantity(item: OrderItem, newQuantity: number) {
     currentOrder.value = updated
   } catch (error: any) {
     if (!isMounted.value) return
-    toast({
-      title: 'Erro',
-      description: error.message || 'Erro ao atualizar quantidade',
-      variant: 'destructive',
-    })
+    showToast(error.message || 'Erro ao atualizar quantidade', 'error')
   }
 }
 
@@ -358,10 +346,7 @@ async function deleteItem(item: OrderItem) {
       if (!isMounted.value) return
 
       currentOrder.value = null
-      toast({
-        title: 'Pedido cancelado',
-        description: 'Pedido removido (sem itens)',
-      })
+      showToast('Pedido removido (sem itens)', 'success')
       router.push('/mesas')
     } else {
       const updated = await ordersApi.updateOrderItems(
@@ -372,18 +357,11 @@ async function deleteItem(item: OrderItem) {
       if (!isMounted.value) return
 
       currentOrder.value = updated
-      toast({
-        title: 'Item removido',
-        description: 'Item removido do pedido',
-      })
+      showToast('Item removido do pedido', 'success')
     }
   } catch (error: any) {
     if (!isMounted.value) return
-    toast({
-      title: 'Erro',
-      description: error.message || 'Erro ao remover item',
-      variant: 'destructive',
-    })
+    showToast(error.message || 'Erro ao remover item', 'error')
   }
 }
 
@@ -431,19 +409,12 @@ async function confirmTransfer() {
     showTransferDialog.value = false
     currentOrder.value = null
 
-    toast({
-      title: 'Transferido',
-      description: `Pedido transferido para Mesa ${targetId}`,
-    })
+    showToast(`Pedido transferido para Mesa ${targetId}`, 'success')
 
     router.push('/mesas')
   } catch (error: any) {
     if (!isMounted.value) return
-    toast({
-      title: 'Erro',
-      description: error.message || 'Erro ao transferir pedido',
-      variant: 'destructive',
-    })
+    showToast(error.message || 'Erro ao transferir pedido', 'error')
   }
 }
 
@@ -464,19 +435,12 @@ async function confirmDelete() {
     showDeleteDialog.value = false
     currentOrder.value = null
 
-    toast({
-      title: 'Pedido cancelado',
-      description: 'Pedido foi cancelado',
-    })
+    showToast('Pedido foi cancelado', 'success')
 
     router.push('/mesas')
   } catch (error: any) {
     if (!isMounted.value) return
-    toast({
-      title: 'Erro',
-      description: error.message || 'Erro ao cancelar pedido',
-      variant: 'destructive',
-    })
+    showToast(error.message || 'Erro ao cancelar pedido', 'error')
   }
 }
 
@@ -484,10 +448,7 @@ async function confirmDelete() {
 function openPaymentDialog() {
   if (!currentOrder.value) return
   showPaymentDialog.value = true
-  toast({
-    title: 'Em desenvolvimento',
-    description: 'Funcionalidade de pagamento em breve',
-  })
+  showToast('Funcionalidade de pagamento em breve', 'success')
 }
 
 // Get item name from menu
@@ -531,6 +492,15 @@ onUnmounted(() => {
 
 <template>
   <div class="flex h-full flex-col gap-4 p-6">
+    <!-- Toast Notification -->
+    <div
+      v-if="toastMessage"
+      class="fixed top-4 right-4 z-50 rounded-lg border px-4 py-3 shadow-lg transition-all"
+      :class="toastVariant === 'success' ? 'bg-green-50 border-green-200 text-green-900' : 'bg-red-50 border-red-200 text-red-900'"
+    >
+      {{ toastMessage }}
+    </div>
+
     <!-- Breadcrumb / Header -->
     <div class="flex items-center gap-4">
       <Button variant="ghost" size="icon" @click="goBack">
