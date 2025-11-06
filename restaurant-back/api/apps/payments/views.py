@@ -131,12 +131,11 @@ class ProcessPaymentView(APIView):
 
         grand_total = Decimal(order.grandTotal)
 
-        # Validate payment amount
-        if amount < grand_total:
+        # Validate payment amount (allow partial payments)
+        if amount <= 0:
             return Response({
-                'error': 'Insufficient payment amount.',
-                'required': str(grand_total),
-                'provided': str(amount)
+                'error': 'Invalid payment amount.',
+                'hint': 'Amount must be greater than zero.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Verify user has an open cash register
