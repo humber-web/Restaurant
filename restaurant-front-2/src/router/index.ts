@@ -47,6 +47,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/PagamentosView.vue'),
       },
       {
+        path: 'pagamentos/processar',
+        name: 'pagamentos-processar',
+        component: () => import('@/views/PagamentosProcessarView.vue'),
+      },
+      {
         path: 'pagamentos/historico',
         name: 'pagamentos-historico',
         component: () => import('@/views/PagamentosHistoricoView.vue'),
