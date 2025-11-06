@@ -16,15 +16,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useTablesStore } from '@/stores/tables'
-import { ordersApi, tablesApi } from '@/services/api'
+import { useOrdersStore } from '@/stores/orders'
+import { tablesApi } from '@/services/api'
 import type { Table, Order } from '@/types/models'
 
 const router = useRouter()
 const tablesStore = useTablesStore()
+const ordersStore = useOrdersStore()
 
 // State
 const isLoading = ref(false)
-const orders = ref<Order[]>([])
 const searchQuery = ref('')
 const statusFilter = ref<'ALL' | 'AV' | 'OC' | 'RE'>('ALL')
 const toastMessage = ref<string | null>(null)
@@ -37,7 +38,6 @@ const selectedTable = ref<Table | null>(null)
 
 // Cleanup flags
 const isMounted = ref(true)
-let refreshInterval: NodeJS.Timeout | null = null
 
 // Status configuration
 const statusConfig = {
@@ -70,7 +70,7 @@ const tablesWithOrders = computed<TableWithOrder[]>(() => {
   try {
     return tablesStore.tables.map(table => {
       // Find active order for this table (not PAID)
-      const order = orders.value.find(
+      const order = ordersStore.orders.find(
         o => o?.details?.table === table.tableid && o?.paymentStatus !== 'PAID'
       )
       return { ...table, currentOrder: order }
@@ -137,7 +137,7 @@ async function fetchData() {
     // Fetch tables and orders in parallel
     await Promise.all([
       tablesStore.fetchTables(true),
-      fetchOrders()
+      ordersStore.fetchOrders()
     ])
   } catch (error: any) {
     if (!isMounted.value) return // Don't update state if unmounted
@@ -146,23 +146,6 @@ async function fetchData() {
   } finally {
     if (isMounted.value) {
       isLoading.value = false
-    }
-  }
-}
-
-async function fetchOrders() {
-  if (!isMounted.value) return
-
-  try {
-    const fetchedOrders = await ordersApi.getOrders()
-    if (isMounted.value) {
-      orders.value = fetchedOrders
-    }
-  } catch (error: any) {
-    console.error('Error fetching orders:', error)
-    // Don't show error for orders - tables can still be displayed without orders
-    if (isMounted.value) {
-      orders.value = []
     }
   }
 }
@@ -270,14 +253,11 @@ onMounted(async () => {
   isMounted.value = true
 
   try {
-    await fetchData()
+    // Initialize WebSocket for real-time order updates
+    ordersStore.initWebSocket()
 
-    // Auto-refresh every 30 seconds
-    refreshInterval = setInterval(() => {
-      if (isMounted.value) {
-        fetchData()
-      }
-    }, 30000)
+    // Fetch initial data
+    await fetchData()
   } catch (error) {
     console.error('Mount error:', error)
   }
@@ -287,11 +267,8 @@ onUnmounted(() => {
   // Mark as unmounted first to prevent any state updates
   isMounted.value = false
 
-  // Clear interval
-  if (refreshInterval) {
-    clearInterval(refreshInterval)
-    refreshInterval = null
-  }
+  // Close WebSocket connection
+  ordersStore.closeWebSocket()
 })
 </script>
 

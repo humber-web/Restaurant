@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ordersApi, menuApi, tablesApi } from '@/services/api'
+import { useOrdersStore } from '@/stores/orders'
 import type { Order, OrderItem, MenuItem, MenuCategory, Table } from '@/types/models'
 import {
   Card,
@@ -47,6 +48,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
+const ordersStore = useOrdersStore()
 
 // Toast notifications
 const toastMessage = ref<string | null>(null)
@@ -80,9 +82,6 @@ const showTransferDialog = ref(false)
 const showDeleteDialog = ref(false)
 const showPaymentDialog = ref(false)
 const targetTableId = ref<string>('')
-
-// Auto-refresh
-let refreshInterval: NodeJS.Timeout | null = null
 
 // Computed: Filtered menu items
 const filteredMenuItems = computed(() => {
@@ -175,15 +174,29 @@ function formatDateTime(dateStr: string): string {
   })
 }
 
+// Watch for order updates from WebSocket
+watch(
+  () => ordersStore.orders,
+  (newOrders) => {
+    if (!isMounted.value) return
+
+    // Find order for this table (exclude PAID orders)
+    const tableOrder = newOrders.find(
+      o => o.details.table === tableId.value && o.paymentStatus !== 'PAID'
+    )
+    currentOrder.value = tableOrder || null
+  },
+  { deep: true }
+)
+
 // Fetch all initial data
 async function fetchData() {
   if (!isMounted.value) return
 
   isLoading.value = true
   try {
-    const [table, orders, items, cats, tables] = await Promise.all([
+    const [table, items, cats, tables] = await Promise.all([
       tablesApi.getTable(tableId.value),
-      ordersApi.getOrders(),
       menuApi.getItems(),
       menuApi.getCategories(),
       tablesApi.getTables(),
@@ -196,8 +209,11 @@ async function fetchData() {
     categories.value = cats
     allTables.value = tables
 
-    // Find order for this table (exclude PAID orders)
-    const tableOrder = orders.find(
+    // Fetch orders from store (will be updated via WebSocket)
+    await ordersStore.fetchOrders()
+
+    // Find initial order for this table
+    const tableOrder = ordersStore.orders.find(
       o => o.details.table === tableId.value && o.paymentStatus !== 'PAID'
     )
     currentOrder.value = tableOrder || null
@@ -208,21 +224,6 @@ async function fetchData() {
     if (isMounted.value) {
       isLoading.value = false
     }
-  }
-}
-
-// Refresh order data
-async function refreshOrder() {
-  if (!currentOrder.value || !isMounted.value) return
-
-  try {
-    const updated = await ordersApi.getOrder(currentOrder.value.orderID)
-    if (isMounted.value) {
-      currentOrder.value = updated
-    }
-  } catch (error) {
-    // Silent fail for auto-refresh
-    console.error('Failed to refresh order:', error)
   }
 }
 
@@ -240,7 +241,7 @@ async function createOrder() {
       details: { table: tableId.value },
     }
 
-    const newOrder = await ordersApi.createOrder(payload)
+    const newOrder = await ordersStore.createOrder(payload)
 
     if (!isMounted.value) return
 
@@ -486,22 +487,18 @@ function goBack() {
 
 // Lifecycle
 onMounted(() => {
-  fetchData()
+  // Initialize WebSocket for real-time order updates
+  ordersStore.initWebSocket()
 
-  // Auto-refresh every 15 seconds
-  refreshInterval = setInterval(() => {
-    if (isMounted.value) {
-      refreshOrder()
-    }
-  }, 15000)
+  // Fetch initial data
+  fetchData()
 })
 
 onUnmounted(() => {
   isMounted.value = false
-  if (refreshInterval) {
-    clearInterval(refreshInterval)
-    refreshInterval = null
-  }
+
+  // Close WebSocket connection
+  ordersStore.closeWebSocket()
 })
 </script>
 
