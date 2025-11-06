@@ -1,14 +1,22 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { Users, Search, Clock } from 'lucide-vue-next'
+import { Users, Search, Clock, Calendar, X } from 'lucide-vue-next'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { useTablesStore } from '@/stores/tables'
-import { ordersApi } from '@/services/api'
+import { ordersApi, tablesApi } from '@/services/api'
 import type { Table, Order } from '@/types/models'
 
 const router = useRouter()
@@ -21,6 +29,11 @@ const searchQuery = ref('')
 const statusFilter = ref<'ALL' | 'AV' | 'OC' | 'RE'>('ALL')
 const toastMessage = ref<string | null>(null)
 const toastVariant = ref<'success' | 'error'>('success')
+
+// Reservation dialog
+const showReserveDialog = ref(false)
+const showUnreserveDialog = ref(false)
+const selectedTable = ref<Table | null>(null)
 
 // Cleanup flags
 const isMounted = ref(true)
@@ -192,6 +205,66 @@ function showToast(message: string, variant: 'success' | 'error') {
   }, 3000)
 }
 
+// Reservation management
+function openReserveDialog(table: Table, event: Event) {
+  event.stopPropagation() // Prevent navigation
+  selectedTable.value = table
+  showReserveDialog.value = true
+}
+
+function openUnreserveDialog(table: Table, event: Event) {
+  event.stopPropagation() // Prevent navigation
+  selectedTable.value = table
+  showUnreserveDialog.value = true
+}
+
+async function confirmReserve() {
+  if (!selectedTable.value || !isMounted.value) return
+
+  const tableId = selectedTable.value.tableid
+
+  try {
+    await tablesApi.updateTable(tableId, {
+      status: 'RE'
+    })
+
+    if (!isMounted.value) return
+
+    // Refresh tables
+    await tablesStore.fetchTables(true)
+
+    showReserveDialog.value = false
+    selectedTable.value = null
+    showToast(`Mesa ${tableId} reservada com sucesso`, 'success')
+  } catch (error: any) {
+    if (!isMounted.value) return
+    showToast(error.message || 'Erro ao reservar mesa', 'error')
+  }
+}
+
+async function confirmUnreserve() {
+  if (!selectedTable.value || !isMounted.value) return
+
+  try {
+    await tablesApi.updateTable(selectedTable.value.tableid, {
+      status: 'AV'
+    })
+
+    if (!isMounted.value) return
+
+    // Refresh tables
+    await tablesStore.fetchTables(true)
+
+    showUnreserveDialog.value = false
+    const tableId = selectedTable.value.tableid
+    selectedTable.value = null
+    showToast(`Reserva da Mesa ${tableId} cancelada`, 'success')
+  } catch (error: any) {
+    if (!isMounted.value) return
+    showToast(error.message || 'Erro ao cancelar reserva', 'error')
+  }
+}
+
 // Lifecycle
 onMounted(async () => {
   isMounted.value = true
@@ -347,13 +420,103 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <!-- Empty message for available tables -->
-          <div v-else-if="table.status === 'AV'" class="pt-2 border-t">
+          <!-- Reserved table message -->
+          <div v-else-if="table.status === 'RE'" class="pt-2 border-t space-y-2">
+            <p class="text-xs text-muted-foreground text-center">Mesa reservada</p>
+            <Button
+              variant="outline"
+              size="sm"
+              class="w-full"
+              @click="(e) => openUnreserveDialog(table, e)"
+            >
+              <X class="h-3 w-3 mr-2" />
+              Cancelar Reserva
+            </Button>
+          </div>
+
+          <!-- Available table actions -->
+          <div v-else-if="table.status === 'AV'" class="pt-2 border-t space-y-2">
             <p class="text-xs text-muted-foreground text-center">Clique para criar pedido</p>
+            <Button
+              variant="outline"
+              size="sm"
+              class="w-full"
+              @click="(e) => openReserveDialog(table, e)"
+            >
+              <Calendar class="h-3 w-3 mr-2" />
+              Reservar Mesa
+            </Button>
           </div>
         </CardContent>
       </Card>
     </div>
+
+    <!-- Reserve Dialog -->
+    <Dialog v-model:open="showReserveDialog">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Reservar Mesa {{ selectedTable?.tableid }}</DialogTitle>
+          <DialogDescription>
+            Confirme para marcar esta mesa como reservada.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="space-y-4 py-4">
+          <div class="flex items-center gap-4">
+            <Calendar class="h-8 w-8 text-muted-foreground" />
+            <div>
+              <p class="font-semibold">Mesa {{ selectedTable?.tableid }}</p>
+              <p class="text-sm text-muted-foreground">Capacidade: {{ selectedTable?.capacity }} pessoas</p>
+            </div>
+          </div>
+          <div class="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+            <p class="text-sm text-yellow-900 dark:text-yellow-200">
+              A mesa será marcada como reservada e ficará indisponível para novos pedidos até que a reserva seja cancelada.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="showReserveDialog = false">
+            Cancelar
+          </Button>
+          <Button @click="confirmReserve">
+            Confirmar Reserva
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Unreserve Dialog -->
+    <Dialog v-model:open="showUnreserveDialog">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Cancelar Reserva da Mesa {{ selectedTable?.tableid }}</DialogTitle>
+          <DialogDescription>
+            A mesa voltará a ficar disponível.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div class="space-y-4 py-4">
+          <div class="flex items-center gap-4">
+            <X class="h-8 w-8 text-muted-foreground" />
+            <div>
+              <p class="font-semibold">Mesa {{ selectedTable?.tableid }}</p>
+              <p class="text-sm text-muted-foreground">Capacidade: {{ selectedTable?.capacity }} pessoas</p>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" @click="showUnreserveDialog = false">
+            Cancelar
+          </Button>
+          <Button variant="destructive" @click="confirmUnreserve">
+            Cancelar Reserva
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
