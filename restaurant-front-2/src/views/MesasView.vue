@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { Users, Search, Clock, Calendar, X } from 'lucide-vue-next'
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card'
@@ -247,6 +247,17 @@ async function confirmUnreserve() {
     showToast(error.message || 'Erro ao cancelar reserva', 'error')
   }
 }
+
+// Watch for order changes to refresh tables (syncs table status with orders)
+watch(
+  () => ordersStore.orders,
+  async () => {
+    if (!isMounted.value) return
+    // When orders change, refresh tables to get updated status (OC/AV)
+    await tablesStore.fetchTables(true)
+  },
+  { deep: true }
+)
 
 // Lifecycle
 onMounted(async () => {
