@@ -51,11 +51,13 @@ class CashRegister(models.Model):
 
         if payment_method == 'CASH':
             self.operations_cash += amount
-        elif payment_method == 'CARD':
+        elif payment_method == 'CARD' or payment_method in ['CREDIT_CARD', 'DEBIT_CARD']:
             self.operations_card += amount
         else:
             self.operations_other += amount
-        self.final_amount += amount
+
+        # Initialize final_amount if None
+        self.final_amount = (self.final_amount or self.initial_amount) + amount
         self.save()
 
     def insert_money(self, amount):
