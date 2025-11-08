@@ -322,6 +322,11 @@ async function processPayment() {
       selected_item_ids: !useManualAmount.value ? Array.from(selectedItems.value) : undefined
     }
 
+    // Debug logging
+    console.log('Payment Payload:', payload)
+    console.log('Selected Items:', Array.from(selectedItems.value))
+    console.log('Use Manual Amount:', useManualAmount.value)
+
     const response = await paymentsApi.processPayment(payload)
 
     // Show success screen
