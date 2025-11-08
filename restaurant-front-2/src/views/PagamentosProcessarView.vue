@@ -304,9 +304,14 @@ async function fetchData() {
     cashRegister.value = register
     menuItems.value = items
 
-    // Select all UNPAID items by default (filter out already paid items)
+    // Select all UNPAID items by default with full remaining quantities
     const unpaid = orderData.items.filter((item: any) => !item.is_paid)
-    selectedItems.value = new Set(unpaid.map(item => item.menu_item))
+    const newMap = new Map<number, number>()
+    unpaid.forEach((item: any) => {
+      const remainingQty = item.remaining_quantity || item.quantity
+      newMap.set(item.menu_item, remainingQty)
+    })
+    selectedItems.value = newMap
 
     // Pre-fill payment amount with selected items total
     paymentAmount.value = selectedItemsTotal.value.toFixed(2)
@@ -587,7 +592,6 @@ onMounted(() => {
                           :value="getSelectedQuantity(item.menu_item)"
                           @input="(e) => setItemQuantity(item.menu_item, parseInt((e.target as HTMLInputElement).value) || 0)"
                           class="w-16 h-8 text-center"
-                          :disabled="!isItemSelected(item.menu_item)"
                           @click.stop
                         />
                         <span class="font-semibold w-20 text-right">
