@@ -58,7 +58,8 @@ const cashRegister = ref<CashRegister | null>(null)
 const isLoading = ref(true)
 
 // Item selection state
-const selectedItems = ref<Set<number>>(new Set())
+// Map of menu_item_id -> quantity to pay
+const selectedItems = ref<Map<number, number>>(new Map())
 
 // Payment state
 const paymentMethod = ref<'CASH' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'ONLINE'>('CASH')
@@ -79,8 +80,10 @@ const selectedItemsTotal = computed(() => {
 
   let subtotal = 0
   order.value.items.forEach((item) => {
-    if (selectedItems.value.has(item.menu_item)) {
-      subtotal += Number(item.price) * item.quantity
+    const quantityToPay = selectedItems.value.get(item.menu_item)
+    if (quantityToPay && quantityToPay > 0) {
+      // Calculate based on quantity to pay (not total quantity in order)
+      subtotal += Number(item.price) * quantityToPay
     }
   })
 
@@ -155,31 +158,70 @@ const calculatedChange = computed(() => {
   return Math.max(0, amount - totalToPay)
 })
 
-// Toggle item selection
+// Set item quantity to pay
+function setItemQuantity(menuItemId: number, quantity: number) {
+  if (!order.value) return
+
+  const item = order.value.items.find(i => i.menu_item === menuItemId)
+  if (!item) return
+
+  // Get remaining quantity for this item
+  const maxQuantity = (item as any).remaining_quantity || item.quantity
+
+  if (quantity <= 0) {
+    selectedItems.value.delete(menuItemId)
+  } else {
+    // Don't allow paying more than remaining
+    const finalQuantity = Math.min(quantity, maxQuantity)
+    selectedItems.value.set(menuItemId, finalQuantity)
+  }
+
+  // Force reactivity
+  selectedItems.value = new Map(selectedItems.value)
+}
+
+// Toggle item selection (select all remaining quantity)
 function toggleItem(menuItemId: number) {
+  if (!order.value) return
+
   if (selectedItems.value.has(menuItemId)) {
     selectedItems.value.delete(menuItemId)
   } else {
-    selectedItems.value.add(menuItemId)
+    // Select the full remaining quantity
+    const item = order.value.items.find(i => i.menu_item === menuItemId)
+    if (item) {
+      const remainingQty = (item as any).remaining_quantity || item.quantity
+      selectedItems.value.set(menuItemId, remainingQty)
+    }
   }
   // Force reactivity
-  selectedItems.value = new Set(selectedItems.value)
+  selectedItems.value = new Map(selectedItems.value)
 }
 
-// Select all items (only unpaid items)
+// Select all items (only unpaid items, full remaining quantities)
 function selectAllItems() {
   if (!order.value) return
-  selectedItems.value = new Set(unpaidItems.value.map(item => item.menu_item))
+  const newMap = new Map<number, number>()
+  unpaidItems.value.forEach(item => {
+    const remainingQty = (item as any).remaining_quantity || item.quantity
+    newMap.set(item.menu_item, remainingQty)
+  })
+  selectedItems.value = newMap
 }
 
 // Deselect all items
 function deselectAllItems() {
-  selectedItems.value = new Set()
+  selectedItems.value = new Map()
 }
 
 // Check if item is selected
 function isItemSelected(menuItemId: number): boolean {
-  return selectedItems.value.has(menuItemId)
+  return selectedItems.value.has(menuItemId) && (selectedItems.value.get(menuItemId) || 0) > 0
+}
+
+// Get selected quantity for an item
+function getSelectedQuantity(menuItemId: number): number {
+  return selectedItems.value.get(menuItemId) || 0
 }
 
 // Get item name
@@ -328,17 +370,24 @@ async function processPayment() {
   isProcessingPayment.value = true
 
   try {
+    // Build selected_items array with quantities
+    const selected_items = !useManualAmount.value
+      ? Array.from(selectedItems.value.entries()).map(([menu_item_id, quantity]) => ({
+          menu_item_id,
+          quantity
+        }))
+      : undefined
+
     const payload: ProcessPaymentPayload = {
       orderID: order.value.orderID,
       amount: amount,
       payment_method: paymentMethod.value,
-      // Send selected item IDs (menu_item IDs, not order item IDs)
-      selected_item_ids: !useManualAmount.value ? Array.from(selectedItems.value) : undefined
+      selected_items
     }
 
     // Debug logging
     console.log('Payment Payload:', payload)
-    console.log('Selected Items:', Array.from(selectedItems.value))
+    console.log('Selected Items with Quantities:', selected_items)
     console.log('Use Manual Amount:', useManualAmount.value)
 
     const response = await paymentsApi.processPayment(payload)
@@ -495,20 +544,42 @@ onMounted(() => {
                   <div
                     v-for="item in unpaidItems"
                     :key="item.menu_item"
-                    class="flex items-center gap-3 text-sm py-2 px-2 rounded hover:bg-accent cursor-pointer"
-                    :class="{ 'bg-accent': isItemSelected(item.menu_item) }"
-                    @click="toggleItem(item.menu_item)"
+                    class="flex items-center gap-3 text-sm py-2 px-2 rounded border"
+                    :class="{ 'bg-accent border-primary': isItemSelected(item.menu_item) }"
                   >
                     <Checkbox
                       :checked="isItemSelected(item.menu_item)"
-                      @click.stop="toggleItem(item.menu_item)"
+                      @update:checked="toggleItem(item.menu_item)"
                     />
-                    <div class="flex-1 flex justify-between items-center">
-                      <div>
-                        <span class="font-medium">{{ getItemName(item.menu_item) }}</span>
-                        <span class="text-muted-foreground ml-2">x{{ item.quantity }}</span>
+                    <div class="flex-1 flex items-center justify-between gap-3">
+                      <div class="flex-1">
+                        <div class="font-medium">{{ getItemName(item.menu_item) }}</div>
+                        <div class="text-xs text-muted-foreground">
+                          €{{ Number(item.price).toFixed(2) }} cada
+                          <span v-if="(item as any).remaining_quantity < item.quantity" class="text-orange-600">
+                            • {{ (item as any).remaining_quantity }} de {{ item.quantity }} restantes
+                          </span>
+                          <span v-else>
+                            • {{ item.quantity }} disponível{{ item.quantity > 1 ? 'is' : '' }}
+                          </span>
+                        </div>
                       </div>
-                      <span class="font-semibold">€{{ (Number(item.price) * item.quantity).toFixed(2) }}</span>
+                      <div class="flex items-center gap-2">
+                        <Label class="text-xs text-muted-foreground whitespace-nowrap">Qtd:</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          :max="(item as any).remaining_quantity || item.quantity"
+                          :value="getSelectedQuantity(item.menu_item)"
+                          @input="(e) => setItemQuantity(item.menu_item, parseInt((e.target as HTMLInputElement).value) || 0)"
+                          class="w-16 h-8 text-center"
+                          :disabled="!isItemSelected(item.menu_item)"
+                          @click.stop
+                        />
+                        <span class="font-semibold w-20 text-right">
+                          €{{ (Number(item.price) * getSelectedQuantity(item.menu_item)).toFixed(2) }}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>

@@ -112,7 +112,7 @@ class ProcessPaymentView(APIView):
         order_id = request.data.get('orderID')
         amount = request.data.get('amount')
         payment_method = request.data.get('payment_method')
-        selected_item_ids = request.data.get('selected_item_ids', [])  # Optional
+        selected_items = request.data.get('selected_items', [])  # Optional: [{"menu_item_id": 1, "quantity": 2}]
 
         # Validate required fields
         if not all([order_id, amount, payment_method]):
@@ -173,22 +173,43 @@ class ProcessPaymentView(APIView):
         )
 
         # Track which items were paid (if specified)
-        if selected_item_ids:
+        if selected_items:
             from .models import PaymentItem
 
-            for item in order.items.all():
-                # Check if this item's menu_item ID is in the selected list
-                if item.menu_item.itemID in selected_item_ids:
-                    # Calculate amount for this specific item (with IVA)
-                    item_subtotal = item.price * item.quantity
-                    item_with_iva = item_subtotal * Decimal('1.15')  # Add 15% IVA
+            # Build a map of menu_item_id -> quantity to pay
+            items_to_pay = {
+                item_data['menu_item_id']: item_data['quantity']
+                for item_data in selected_items
+            }
 
-                    PaymentItem.objects.create(
-                        payment=payment,
-                        order_item=item,
-                        quantity_paid=item.quantity,
-                        amount_paid=item_with_iva
-                    )
+            for item in order.items.all():
+                menu_item_id = item.menu_item.itemID
+
+                # Check if this item should be paid
+                if menu_item_id in items_to_pay:
+                    quantity_to_pay = items_to_pay[menu_item_id]
+
+                    # Validate quantity
+                    if quantity_to_pay <= 0:
+                        continue  # Skip invalid quantities
+
+                    # Don't allow paying more than what's remaining
+                    remaining_qty = item.remaining_quantity()
+                    if quantity_to_pay > remaining_qty:
+                        quantity_to_pay = remaining_qty
+
+                    if quantity_to_pay > 0:
+                        # Calculate amount for the specific quantity (with IVA)
+                        item_unit_price = item.price  # Price per unit
+                        item_subtotal = item_unit_price * quantity_to_pay
+                        item_with_iva = item_subtotal * Decimal('1.15')  # Add 15% IVA
+
+                        PaymentItem.objects.create(
+                            payment=payment,
+                            order_item=item,
+                            quantity_paid=quantity_to_pay,
+                            amount_paid=item_with_iva
+                        )
 
         # Add transaction to cash register
         cash_register.add_transaction(amount, payment_method)

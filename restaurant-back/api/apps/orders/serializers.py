@@ -10,18 +10,23 @@ class OrderItemSerializer(serializers.ModelSerializer):
     menu_item = serializers.PrimaryKeyRelatedField(queryset=MenuItem.objects.all())
     name = serializers.SerializerMethodField()
     is_paid = serializers.SerializerMethodField()
+    remaining_quantity = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
-        fields = ['menu_item', 'name', 'quantity', 'price', 'status', 'to_be_prepared_in', 'is_paid']
-        read_only_fields = ['price', 'name', 'to_be_prepared_in', 'is_paid']
+        fields = ['menu_item', 'name', 'quantity', 'price', 'status', 'to_be_prepared_in', 'is_paid', 'remaining_quantity']
+        read_only_fields = ['price', 'name', 'to_be_prepared_in', 'is_paid', 'remaining_quantity']
 
     def get_name(self, obj):
         return obj.menu_item.name
 
     def get_is_paid(self, obj):
-        """Check if this item has been paid for."""
+        """Check if this item has been fully paid for."""
         return obj.is_paid()
+
+    def get_remaining_quantity(self, obj):
+        """Get the remaining unpaid quantity for this item."""
+        return obj.remaining_quantity()
 
 
 class OrderDetailsSerializer(serializers.ModelSerializer):

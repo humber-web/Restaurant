@@ -169,11 +169,29 @@ class OrderItem(models.Model):
 
     def is_paid(self):
         """
-        Check if this order item has been paid for.
-        Returns True if the item appears in any completed payment.
+        Check if this order item has been fully paid for.
+        Returns True if the total paid quantity equals or exceeds the order quantity.
         """
-        # Check if this order item is linked to any payment items
-        return self.payments.filter(payment__payment_status='COMPLETED').exists()
+        from django.db.models import Sum
+
+        total_paid = self.payments.filter(
+            payment__payment_status='COMPLETED'
+        ).aggregate(total=Sum('quantity_paid'))['total'] or 0
+
+        return total_paid >= self.quantity
+
+    def remaining_quantity(self):
+        """
+        Get the remaining unpaid quantity for this order item.
+        Returns the number of items that haven't been paid for yet.
+        """
+        from django.db.models import Sum
+
+        total_paid = self.payments.filter(
+            payment__payment_status='COMPLETED'
+        ).aggregate(total=Sum('quantity_paid'))['total'] or 0
+
+        return self.quantity - total_paid
 
     def __str__(self):
         return f"Order {self.order.orderID} - Item {self.menu_item.name}"
