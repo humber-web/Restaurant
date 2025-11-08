@@ -194,7 +194,8 @@ class ProcessPaymentView(APIView):
         cash_register.add_transaction(amount, payment_method)
 
         # Update order payment status based on remaining amount AFTER this payment
-        new_remaining = order.remaining_amount() - amount
+        # Note: remaining_amount() already accounts for the payment we just created above
+        new_remaining = order.remaining_amount()
         if new_remaining <= Decimal('0.01'):  # Account for rounding errors
             order.paymentStatus = 'PAID'
             # Release reserved inventory after successful payment
