@@ -61,6 +61,13 @@ const isLoading = ref(true)
 // Map of menu_item_id -> quantity to pay
 const selectedItems = ref<Map<number, number>>(new Map())
 
+// Ensure selectedItems is always a Map (handles hot reload edge cases)
+function ensureMapInitialized() {
+  if (!(selectedItems.value instanceof Map)) {
+    selectedItems.value = new Map()
+  }
+}
+
 // Payment state
 const paymentMethod = ref<'CASH' | 'CREDIT_CARD' | 'DEBIT_CARD' | 'ONLINE'>('CASH')
 const paymentAmount = ref<string>('')
@@ -77,6 +84,7 @@ const isOpeningRegister = ref(false)
 // Computed: Selected items total (with IVA)
 const selectedItemsTotal = computed(() => {
   if (!order.value) return 0
+  ensureMapInitialized()
 
   let subtotal = 0
   order.value.items.forEach((item) => {
@@ -161,6 +169,7 @@ const calculatedChange = computed(() => {
 // Set item quantity to pay
 function setItemQuantity(menuItemId: number, quantity: number) {
   if (!order.value) return
+  ensureMapInitialized()
 
   const item = order.value.items.find(i => i.menu_item === menuItemId)
   if (!item) return
@@ -183,6 +192,7 @@ function setItemQuantity(menuItemId: number, quantity: number) {
 // Toggle item selection (select all remaining quantity)
 function toggleItem(menuItemId: number) {
   if (!order.value) return
+  ensureMapInitialized()
 
   if (selectedItems.value.has(menuItemId)) {
     selectedItems.value.delete(menuItemId)
@@ -216,11 +226,13 @@ function deselectAllItems() {
 
 // Check if item is selected
 function isItemSelected(menuItemId: number): boolean {
+  ensureMapInitialized()
   return selectedItems.value.has(menuItemId) && (selectedItems.value.get(menuItemId) || 0) > 0
 }
 
 // Get selected quantity for an item
 function getSelectedQuantity(menuItemId: number): number {
+  ensureMapInitialized()
   return selectedItems.value.get(menuItemId) || 0
 }
 
@@ -370,6 +382,8 @@ async function processPayment() {
   isProcessingPayment.value = true
 
   try {
+    ensureMapInitialized()
+
     // Build selected_items array with quantities
     const selected_items = !useManualAmount.value
       ? Array.from(selectedItems.value.entries()).map(([menu_item_id, quantity]) => ({
