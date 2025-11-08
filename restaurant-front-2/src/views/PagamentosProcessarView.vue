@@ -102,12 +102,16 @@ const orderTotals = computed(() => {
       totalAmount: 0,
       totalIva: 0,
       grandTotal: 0,
+      totalPaid: 0,
+      remainingAmount: 0,
     }
   }
   return {
     totalAmount: Number(order.value.totalAmount || 0),
     totalIva: Number(order.value.totalIva || 0),
     grandTotal: Number(order.value.grandTotal || 0),
+    totalPaid: Number(order.value.total_paid || 0),
+    remainingAmount: Number(order.value.remaining_amount || 0),
   }
 })
 
@@ -136,7 +140,9 @@ const isAmountValid = computed(() => {
 // Computed: Payment status based on amount
 const paymentStatus = computed(() => {
   const amount = parseFloat(paymentAmount.value) || 0
-  if (amount >= orderTotals.value.grandTotal) return 'full'
+  // Use remaining amount instead of grandTotal for partial payment scenarios
+  const amountNeeded = orderTotals.value.remainingAmount > 0 ? orderTotals.value.remainingAmount : orderTotals.value.grandTotal
+  if (amount >= amountNeeded) return 'full'
   if (amount > 0) return 'partial'
   return 'invalid'
 })
@@ -310,10 +316,11 @@ async function processPayment() {
     return
   }
 
-  // Warn for partial payment
-  if (amount < orderTotals.value.grandTotal) {
-    const remaining = orderTotals.value.grandTotal - amount
-    if (!confirm(`Pagamento parcial de €${amount.toFixed(2)}. Faltam €${remaining.toFixed(2)}. Continuar?`)) {
+  // Warn for partial payment - use remaining amount
+  const amountNeeded = orderTotals.value.remainingAmount > 0 ? orderTotals.value.remainingAmount : orderTotals.value.grandTotal
+  if (amount < amountNeeded) {
+    const stillOwed = amountNeeded - amount
+    if (!confirm(`Pagamento parcial de €${amount.toFixed(2)}. Ainda faltam €${stillOwed.toFixed(2)} para completar o pagamento. Continuar?`)) {
       return
     }
   }
@@ -512,16 +519,24 @@ onMounted(() => {
               <!-- Pricing -->
               <div class="space-y-2">
                 <div class="flex justify-between text-sm">
+                  <span class="text-muted-foreground">Total do Pedido:</span>
+                  <span>€{{ orderTotals.grandTotal.toFixed(2) }}</span>
+                </div>
+                <div v-if="orderTotals.totalPaid > 0" class="flex justify-between text-sm">
+                  <span class="text-muted-foreground">Já Pago:</span>
+                  <span class="text-green-600 font-semibold">-€{{ orderTotals.totalPaid.toFixed(2) }}</span>
+                </div>
+                <div v-if="orderTotals.totalPaid > 0" class="flex justify-between text-sm">
+                  <span class="text-muted-foreground">Restante:</span>
+                  <span class="font-semibold">€{{ orderTotals.remainingAmount.toFixed(2) }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
                   <span class="text-muted-foreground">Itens Selecionados:</span>
                   <span class="font-semibold">€{{ selectedItemsTotal.toFixed(2) }}</span>
                 </div>
-                <div class="flex justify-between text-sm text-muted-foreground">
-                  <span>Total do Pedido:</span>
-                  <span>€{{ orderTotals.grandTotal.toFixed(2) }}</span>
-                </div>
                 <Separator />
                 <div class="flex justify-between text-xl font-bold">
-                  <span>A Pagar:</span>
+                  <span>A Pagar Agora:</span>
                   <span class="text-primary">€{{ selectedItemsTotal.toFixed(2) }}</span>
                 </div>
               </div>
@@ -653,7 +668,7 @@ onMounted(() => {
               </div>
               <div v-if="paymentStatus === 'partial'" class="flex items-center gap-2">
                 <Badge variant="secondary" class="text-xs">
-                  Pagamento Parcial: Faltam €{{ (orderTotals.grandTotal - parseFloat(paymentAmount || '0')).toFixed(2) }}
+                  Pagamento Parcial: Ainda faltam €{{ ((orderTotals.remainingAmount > 0 ? orderTotals.remainingAmount : orderTotals.grandTotal) - parseFloat(paymentAmount || '0')).toFixed(2) }}
                 </Badge>
               </div>
             </div>
