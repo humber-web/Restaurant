@@ -89,6 +89,12 @@ const selectedItemsTotal = computed(() => {
   return subtotal + iva
 })
 
+// Computed: Filter out already paid items
+const unpaidItems = computed(() => {
+  if (!order.value) return []
+  return order.value.items.filter((item: any) => !item.is_paid)
+})
+
 // Computed: Order totals
 const orderTotals = computed(() => {
   if (!order.value) {
@@ -108,10 +114,10 @@ const orderTotals = computed(() => {
 // Computed: Selected items count
 const selectedItemsCount = computed(() => selectedItems.value.size)
 
-// Computed: All items selected
+// Computed: All items selected (only count unpaid items)
 const allItemsSelected = computed(() => {
   if (!order.value) return false
-  return selectedItems.value.size === order.value.items.length
+  return selectedItems.value.size === unpaidItems.value.length
 })
 
 // Watch selected items and update payment amount
@@ -154,10 +160,10 @@ function toggleItem(menuItemId: number) {
   selectedItems.value = new Set(selectedItems.value)
 }
 
-// Select all items
+// Select all items (only unpaid items)
 function selectAllItems() {
   if (!order.value) return
-  selectedItems.value = new Set(order.value.items.map(item => item.menu_item))
+  selectedItems.value = new Set(unpaidItems.value.map(item => item.menu_item))
 }
 
 // Deselect all items
@@ -238,8 +244,9 @@ async function fetchData() {
     cashRegister.value = register
     menuItems.value = items
 
-    // Select all items by default
-    selectedItems.value = new Set(orderData.items.map(item => item.menu_item))
+    // Select all UNPAID items by default (filter out already paid items)
+    const unpaid = orderData.items.filter((item: any) => !item.is_paid)
+    selectedItems.value = new Set(unpaid.map(item => item.menu_item))
 
     // Pre-fill payment amount with selected items total
     paymentAmount.value = selectedItemsTotal.value.toFixed(2)
@@ -321,6 +328,11 @@ async function processPayment() {
       // Send selected item IDs (menu_item IDs, not order item IDs)
       selected_item_ids: !useManualAmount.value ? Array.from(selectedItems.value) : undefined
     }
+
+    // Debug logging
+    console.log('Payment Payload:', payload)
+    console.log('Selected Items:', Array.from(selectedItems.value))
+    console.log('Use Manual Amount:', useManualAmount.value)
 
     const response = await paymentsApi.processPayment(payload)
 
@@ -463,15 +475,18 @@ onMounted(() => {
 
               <Separator />
 
-              <!-- Items List with Checkboxes -->
+              <!-- Items List with Checkboxes (Only show unpaid items) -->
               <div class="space-y-2">
                 <h3 class="font-semibold text-sm flex items-center gap-2">
                   Selecione os Itens:
-                  <Badge variant="secondary">{{ selectedItemsCount }}/{{ order.items.length }}</Badge>
+                  <Badge variant="secondary">{{ selectedItemsCount }}/{{ unpaidItems.length }}</Badge>
                 </h3>
-                <div class="space-y-2 max-h-64 overflow-y-auto">
+                <div v-if="unpaidItems.length === 0" class="text-center py-8 text-muted-foreground">
+                  <p>Todos os itens já foram pagos!</p>
+                </div>
+                <div v-else class="space-y-2 max-h-64 overflow-y-auto">
                   <div
-                    v-for="item in order.items"
+                    v-for="item in unpaidItems"
                     :key="item.menu_item"
                     class="flex items-center gap-3 text-sm py-2 px-2 rounded hover:bg-accent cursor-pointer"
                     :class="{ 'bg-accent': isItemSelected(item.menu_item) }"

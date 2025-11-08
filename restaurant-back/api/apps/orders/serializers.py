@@ -9,14 +9,19 @@ from apps.common.feature_flags import FeatureFlags, Modules
 class OrderItemSerializer(serializers.ModelSerializer):
     menu_item = serializers.PrimaryKeyRelatedField(queryset=MenuItem.objects.all())
     name = serializers.SerializerMethodField()
+    is_paid = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
-        fields = ['menu_item', 'name', 'quantity', 'price', 'status', 'to_be_prepared_in']
-        read_only_fields = ['price', 'name', 'to_be_prepared_in']
+        fields = ['menu_item', 'name', 'quantity', 'price', 'status', 'to_be_prepared_in', 'is_paid']
+        read_only_fields = ['price', 'name', 'to_be_prepared_in', 'is_paid']
 
     def get_name(self, obj):
         return obj.menu_item.name
+
+    def get_is_paid(self, obj):
+        """Check if this item has been paid for."""
+        return obj.is_paid()
 
 
 class OrderDetailsSerializer(serializers.ModelSerializer):
