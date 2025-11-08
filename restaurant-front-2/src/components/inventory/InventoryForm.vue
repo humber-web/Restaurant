@@ -110,7 +110,7 @@ function handleOpenChange(open: boolean) {
         <div class="grid gap-4 py-4">
           <div class="grid gap-2">
             <Label for="menu-item">Item de Menu</Label>
-            <Select v-model="String(menuItem)">
+            <Select v-model="menuItem">
               <SelectTrigger id="menu-item">
                 <SelectValue placeholder="Selecione um item de menu" />
               </SelectTrigger>
@@ -118,7 +118,7 @@ function handleOpenChange(open: boolean) {
                 <SelectItem
                   v-for="item in menuItems"
                   :key="item.itemID"
-                  :value="String(item.itemID)"
+                  :value="item.itemID"
                 >
                   {{ item.name }}
                 </SelectItem>
