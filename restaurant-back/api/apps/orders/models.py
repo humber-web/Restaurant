@@ -155,6 +155,14 @@ class OrderItem(models.Model):
             order.calculate_totals()
             order.save()
 
+    def is_paid(self):
+        """
+        Check if this order item has been paid for.
+        Returns True if the item appears in any completed payment.
+        """
+        # Check if this order item is linked to any payment items
+        return self.payments.filter(payment__payment_status='COMPLETED').exists()
+
     def __str__(self):
         return f"Order {self.order.orderID} - Item {self.menu_item.name}"
 
