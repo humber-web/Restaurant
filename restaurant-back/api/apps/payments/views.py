@@ -140,6 +140,16 @@ class ProcessPaymentView(APIView):
                 'hint': 'Amount must be greater than zero.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
+        # Check how much is still owed (prevent overpayment)
+        remaining = order.remaining_amount()
+        if amount > remaining:
+            return Response({
+                'error': 'Payment amount exceeds remaining balance.',
+                'remaining': str(remaining),
+                'attempted': str(amount),
+                'hint': f'This order only needs €{remaining}. Please adjust the payment amount.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
         # Verify user has an open cash register
         cash_register = CashRegister.objects.filter(
             user=request.user,
@@ -183,8 +193,9 @@ class ProcessPaymentView(APIView):
         # Add transaction to cash register
         cash_register.add_transaction(amount, payment_method)
 
-        # Update order payment status
-        if amount >= order.grandTotal:
+        # Update order payment status based on remaining amount AFTER this payment
+        new_remaining = order.remaining_amount() - amount
+        if new_remaining <= Decimal('0.01'):  # Account for rounding errors
             order.paymentStatus = 'PAID'
             # Release reserved inventory after successful payment
             self._release_inventory(order)
