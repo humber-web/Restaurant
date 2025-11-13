@@ -265,7 +265,7 @@ async function fetchData() {
     const [ordersData, paymentsData, menuItemsData, categoriesData] = await Promise.all([
       ordersApi.getOrders(),
       paymentsApi.getPayments(),
-      menuApi.getMenuItems(),
+      menuApi.getItems(),
       menuApi.getCategories(),
     ])
     orders.value = ordersData
@@ -318,8 +318,12 @@ function setDefaultDateRange() {
   const thirtyDaysAgo = new Date()
   thirtyDaysAgo.setDate(today.getDate() - 30)
 
-  filterDateFrom.value = thirtyDaysAgo.toISOString().split('T')[0]
-  filterDateTo.value = today.toISOString().split('T')[0]
+  const fromIso = thirtyDaysAgo.toISOString()
+  const toIso = today.toISOString()
+
+  // Use a safe fallback in case split returns undefined
+  filterDateFrom.value = (fromIso.split('T')[0]) || ''
+  filterDateTo.value = (toIso.split('T')[0]) || ''
 }
 
 // Clear filters
