@@ -136,14 +136,21 @@ async function openCashRegister() {
 
 // Close cash register
 async function closeCashRegister() {
+  console.log('closeCashRegister called with:', {
+    declaredCash: declaredCash.value,
+    declaredCard: declaredCard.value
+  })
+
   const cash = parseFloat(declaredCash.value)
   const card = parseFloat(declaredCard.value)
 
   if (isNaN(cash) || isNaN(card) || cash < 0 || card < 0) {
+    console.error('Invalid values:', { cash, card })
     showToast('Por favor insira valores válidos', 'error')
     return
   }
 
+  console.log('Closing cash register with:', { cash, card })
   isProcessing.value = true
   try {
     closeSummary.value = await cashRegisterApi.close({
@@ -228,9 +235,19 @@ function handleMoneySubmit() {
 
 // Pre-fill close dialog with expected values
 function openCloseDialog() {
+  if (!cashRegister.value) {
+    showToast('Nenhuma caixa aberta encontrada', 'error')
+    return
+  }
+
   declaredCash.value = expectedCashAmount.value.toFixed(2)
   declaredCard.value = (cashRegister.value?.operations_card || 0).toFixed(2)
   showCloseDialog.value = true
+
+  console.log('Opening close dialog with values:', {
+    declaredCash: declaredCash.value,
+    declaredCard: declaredCard.value
+  })
 }
 
 // Format date/time
