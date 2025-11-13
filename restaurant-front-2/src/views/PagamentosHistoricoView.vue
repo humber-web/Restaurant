@@ -1,10 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, h } from 'vue'
-import { RouterLink } from 'vue-router'
+import { ref, computed, onMounted } from 'vue'
 import { paymentsApi } from '@/services/api/payments'
 import type { Payment } from '@/types/models'
-import type { ColumnDef } from '@tanstack/vue-table'
-import DataTableAdvanced from '@/components/shared/DataTableAdvanced.vue'
+import PaymentsTableAdvanced from '@/components/payments/PaymentsTableAdvanced.vue'
 import {
   Card,
   CardContent,
@@ -15,7 +13,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -24,10 +21,6 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import {
-  CreditCard,
-  Wallet,
-  Globe,
-  ArrowUpDown,
   RefreshCw,
   Filter,
 } from 'lucide-vue-next'
@@ -51,113 +44,6 @@ function showToast(message: string, variant: 'success' | 'error' = 'success') {
     toastMessage.value = null
   }, 3000)
 }
-
-// Column definitions
-const columns: ColumnDef<Payment>[] = [
-  {
-    accessorKey: 'paymentID',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => [
-        'ID',
-        h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })
-      ])
-    },
-    cell: ({ row }) => h('div', { class: 'font-medium' }, `#${row.getValue('paymentID')}`),
-    meta: { label: 'ID' },
-  },
-  {
-    accessorKey: 'order',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => [
-        'Pedido',
-        h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })
-      ])
-    },
-    cell: ({ row }) => {
-      const orderId = row.getValue('order') as number
-      return h(RouterLink, {
-        to: `/pedidos?order=${orderId}`,
-        class: 'text-primary hover:underline'
-      }, () => `Pedido #${orderId}`)
-    },
-    meta: { label: 'Pedido' },
-  },
-  {
-    accessorKey: 'created_at',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => [
-        'Data/Hora',
-        h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })
-      ])
-    },
-    cell: ({ row }) => formatDateTime(row.getValue('created_at')),
-    meta: { label: 'Data/Hora' },
-  },
-  {
-    accessorKey: 'payment_method',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => [
-        'Método',
-        h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })
-      ])
-    },
-    cell: ({ row }) => {
-      const method = row.getValue('payment_method') as string
-      const Icon = getPaymentMethodIcon(method)
-      return h('div', { class: 'flex items-center gap-2' }, [
-        h(Icon, { class: 'h-4 w-4' }),
-        h('span', getPaymentMethodLabel(method))
-      ])
-    },
-    meta: { label: 'Método' },
-  },
-  {
-    accessorKey: 'amount',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => [
-        'Valor',
-        h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })
-      ])
-    },
-    cell: ({ row }) => {
-      const amount = parseFloat(row.getValue('amount'))
-      return h('div', { class: 'font-semibold' }, `€${amount.toFixed(2)}`)
-    },
-    meta: { label: 'Valor' },
-  },
-  {
-    accessorKey: 'payment_status',
-    header: ({ column }) => {
-      return h(Button, {
-        variant: 'ghost',
-        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
-      }, () => [
-        'Estado',
-        h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })
-      ])
-    },
-    cell: ({ row }) => {
-      const status = row.getValue('payment_status') as string
-      return h(Badge, { variant: getStatusVariant(status) }, () => getStatusLabel(status))
-    },
-    meta: { label: 'Estado' },
-  },
-]
 
 // Computed: Filtered payments
 const filteredPayments = computed(() => {
@@ -228,77 +114,6 @@ function clearFilters() {
   filterStatus.value = 'ALL'
   filterDateFrom.value = ''
   filterDateTo.value = ''
-}
-
-// Get payment method icon
-function getPaymentMethodIcon(method: string) {
-  switch (method) {
-    case 'CASH':
-      return Wallet
-    case 'CREDIT_CARD':
-    case 'DEBIT_CARD':
-      return CreditCard
-    case 'ONLINE':
-      return Globe
-    default:
-      return CreditCard
-  }
-}
-
-// Get payment method label
-function getPaymentMethodLabel(method: string) {
-  switch (method) {
-    case 'CASH':
-      return 'Dinheiro'
-    case 'CREDIT_CARD':
-      return 'Cartão de Crédito'
-    case 'DEBIT_CARD':
-      return 'Cartão de Débito'
-    case 'ONLINE':
-      return 'Online'
-    default:
-      return method
-  }
-}
-
-// Get status badge variant
-function getStatusVariant(status: string): 'default' | 'secondary' | 'destructive' {
-  switch (status) {
-    case 'COMPLETED':
-      return 'default'
-    case 'PENDING':
-      return 'secondary'
-    case 'FAILED':
-      return 'destructive'
-    default:
-      return 'secondary'
-  }
-}
-
-// Get status label
-function getStatusLabel(status: string) {
-  switch (status) {
-    case 'COMPLETED':
-      return 'Concluído'
-    case 'PENDING':
-      return 'Pendente'
-    case 'FAILED':
-      return 'Falhado'
-    default:
-      return status
-  }
-}
-
-// Format date/time
-function formatDateTime(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleString('pt-PT', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
 }
 
 onMounted(() => {
@@ -423,12 +238,9 @@ onMounted(() => {
         <CardTitle class="text-lg">Pagamentos</CardTitle>
       </CardHeader>
       <CardContent class="flex-1">
-        <DataTableAdvanced
+        <PaymentsTableAdvanced
           v-if="!isLoading"
-          :data="filteredPayments"
-          :columns="columns"
-          search-key="paymentID"
-          search-placeholder="Pesquisar por ID de Pagamento..."
+          :payments="filteredPayments"
         />
         <div v-else class="flex items-center justify-center py-8">
           <p class="text-muted-foreground">A carregar pagamentos...</p>
