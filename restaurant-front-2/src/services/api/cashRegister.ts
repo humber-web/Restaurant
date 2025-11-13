@@ -16,7 +16,8 @@ export const cashRegisterApi = {
 
   async close(data: CloseCashRegisterPayload): Promise<CashRegisterSummary> {
     const response = await api.post('/cash_register/close/', data)
-    return response.data
+    // Backend returns data nested under 'results' key, extract it
+    return response.data.results as CashRegisterSummary
   },
 
   async getSummary(): Promise<CashRegisterSummary> {
