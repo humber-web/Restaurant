@@ -146,14 +146,19 @@ const statistics = computed(() => {
 // Update order item status
 async function updateItemStatus(item: OrderItem, newStatus: string) {
   try {
+    // Debug: Log the item to see what we have
+    console.log('Updating item:', item)
+
     if (!item.id) {
-      showToast('Item ID não encontrado', 'error')
+      console.error('Item sem ID:', item)
+      showToast(`Item ID não encontrado. Item: ${item.name || item.menu_item}`, 'error')
       return
     }
 
     isLoading.value = true
 
-    await ordersApi.updateOrderItemStatus(item.id, newStatus)
+    const updatedOrder = await ordersApi.updateOrderItemStatus(item.id, newStatus)
+    console.log('Order atualizada:', updatedOrder)
 
     showToast('Estado atualizado com sucesso')
   } catch (error) {
@@ -209,6 +214,16 @@ async function refreshOrders() {
   try {
     isLoading.value = true
     await ordersStore.fetchOrders()
+
+    // Debug: Log orders to see if items have IDs
+    console.log('Orders carregadas:', ordersStore.orders.length)
+    if (ordersStore.orders.length > 0) {
+      console.log('Exemplo de order com items:', ordersStore.orders[0])
+      if (ordersStore.orders[0].items.length > 0) {
+        console.log('Exemplo de item:', ordersStore.orders[0].items[0])
+      }
+    }
+
     showToast('Pedidos atualizados')
   } catch (error) {
     console.error('Error fetching orders:', error)
