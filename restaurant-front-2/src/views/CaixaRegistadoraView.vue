@@ -241,7 +241,7 @@ function openCloseDialog() {
   }
 
   declaredCash.value = expectedCashAmount.value.toFixed(2)
-  declaredCard.value = (cashRegister.value?.operations_card || 0).toFixed(2)
+  declaredCard.value = Number(cashRegister.value?.operations_card || 0).toFixed(2)
   showCloseDialog.value = true
 
   console.log('Opening close dialog with values:', {
