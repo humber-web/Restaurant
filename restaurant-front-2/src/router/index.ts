@@ -40,6 +40,12 @@ const routes: RouteRecordRaw[] = [
         name: 'pedidos',
         component: () => import('@/views/PedidosView.vue'),
       },
+      // Cozinha (Kitchen)
+      {
+        path: 'cozinha',
+        name: 'cozinha',
+        component: () => import('@/views/CozinhaView.vue'),
+      },
       // Pagamentos (Payments)
       {
         path: 'pagamentos',
