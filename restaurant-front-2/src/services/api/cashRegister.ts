@@ -35,10 +35,10 @@ export const cashRegisterApi = {
   },
 
   async insertMoney(data: InsertMoneyPayload): Promise<void> {
-    await api.post('/cash_register/insert_money/', data)
+    await api.post('/cash_register/insert/', data)
   },
 
   async extractMoney(data: ExtractMoneyPayload): Promise<void> {
-    await api.post('/cash_register/extract_money/', data)
+    await api.post('/cash_register/extract/', data)
   },
 }
