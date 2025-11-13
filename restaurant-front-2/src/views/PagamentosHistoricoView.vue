@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, h } from 'vue'
+import { RouterLink } from 'vue-router'
 import { paymentsApi } from '@/services/api/payments'
-import { ordersApi } from '@/services/api'
 import type { Payment } from '@/types/models'
+import type { ColumnDef } from '@tanstack/vue-table'
+import DataTableAdvanced from '@/components/shared/DataTableAdvanced.vue'
 import {
   Card,
   CardContent,
@@ -15,35 +17,24 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Skeleton } from '@/components/ui/skeleton'
 import {
   CreditCard,
   Wallet,
   Globe,
-  Search,
-  Filter,
-  Calendar,
+  ArrowUpDown,
   RefreshCw,
+  Filter,
 } from 'lucide-vue-next'
 
 // State
 const payments = ref<Payment[]>([])
 const isLoading = ref(true)
-const searchQuery = ref('')
 const filterMethod = ref<string>('ALL')
 const filterStatus = ref<string>('ALL')
 const filterDateFrom = ref('')
@@ -61,18 +52,116 @@ function showToast(message: string, variant: 'success' | 'error' = 'success') {
   }, 3000)
 }
 
+// Column definitions
+const columns: ColumnDef<Payment>[] = [
+  {
+    accessorKey: 'paymentID',
+    header: ({ column }) => {
+      return h(Button, {
+        variant: 'ghost',
+        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+      }, () => [
+        'ID',
+        h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })
+      ])
+    },
+    cell: ({ row }) => h('div', { class: 'font-medium' }, `#${row.getValue('paymentID')}`),
+    meta: { label: 'ID' },
+  },
+  {
+    accessorKey: 'order',
+    header: ({ column }) => {
+      return h(Button, {
+        variant: 'ghost',
+        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+      }, () => [
+        'Pedido',
+        h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })
+      ])
+    },
+    cell: ({ row }) => {
+      const orderId = row.getValue('order') as number
+      return h(RouterLink, {
+        to: `/pedidos?order=${orderId}`,
+        class: 'text-primary hover:underline'
+      }, () => `Pedido #${orderId}`)
+    },
+    meta: { label: 'Pedido' },
+  },
+  {
+    accessorKey: 'created_at',
+    header: ({ column }) => {
+      return h(Button, {
+        variant: 'ghost',
+        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+      }, () => [
+        'Data/Hora',
+        h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })
+      ])
+    },
+    cell: ({ row }) => formatDateTime(row.getValue('created_at')),
+    meta: { label: 'Data/Hora' },
+  },
+  {
+    accessorKey: 'payment_method',
+    header: ({ column }) => {
+      return h(Button, {
+        variant: 'ghost',
+        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+      }, () => [
+        'Método',
+        h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })
+      ])
+    },
+    cell: ({ row }) => {
+      const method = row.getValue('payment_method') as string
+      const Icon = getPaymentMethodIcon(method)
+      return h('div', { class: 'flex items-center gap-2' }, [
+        h(Icon, { class: 'h-4 w-4' }),
+        h('span', getPaymentMethodLabel(method))
+      ])
+    },
+    meta: { label: 'Método' },
+  },
+  {
+    accessorKey: 'amount',
+    header: ({ column }) => {
+      return h(Button, {
+        variant: 'ghost',
+        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+      }, () => [
+        'Valor',
+        h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })
+      ])
+    },
+    cell: ({ row }) => {
+      const amount = parseFloat(row.getValue('amount'))
+      return h('div', { class: 'font-semibold' }, `€${amount.toFixed(2)}`)
+    },
+    meta: { label: 'Valor' },
+  },
+  {
+    accessorKey: 'payment_status',
+    header: ({ column }) => {
+      return h(Button, {
+        variant: 'ghost',
+        onClick: () => column.toggleSorting(column.getIsSorted() === 'asc'),
+      }, () => [
+        'Estado',
+        h(ArrowUpDown, { class: 'ml-2 h-4 w-4' })
+      ])
+    },
+    cell: ({ row }) => {
+      const status = row.getValue('payment_status') as string
+      return h(Badge, { variant: getStatusVariant(status) }, () => getStatusLabel(status))
+    },
+    meta: { label: 'Estado' },
+  },
+]
+
 // Computed: Filtered payments
 const filteredPayments = computed(() => {
   let result = payments.value
-
-  // Filter by search query (order ID)
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(payment =>
-      payment.order.toString().includes(query) ||
-      payment.paymentID.toString().includes(query)
-    )
-  }
 
   // Filter by payment method
   if (filterMethod.value !== 'ALL') {
@@ -96,10 +185,7 @@ const filteredPayments = computed(() => {
     result = result.filter(payment => new Date(payment.created_at) <= toDate)
   }
 
-  // Sort by most recent first
-  return result.sort((a, b) =>
-    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-  )
+  return result
 })
 
 // Computed: Statistics
@@ -138,7 +224,6 @@ async function fetchPayments() {
 
 // Clear filters
 function clearFilters() {
-  searchQuery.value = ''
   filterMethod.value = 'ALL'
   filterStatus.value = 'ALL'
   filterDateFrom.value = ''
@@ -216,16 +301,6 @@ function formatDateTime(dateStr: string): string {
   })
 }
 
-// Format date
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  return date.toLocaleDateString('pt-PT', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
-
 onMounted(() => {
   fetchPayments()
 })
@@ -279,21 +354,7 @@ onMounted(() => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <!-- Search -->
-          <div class="space-y-2">
-            <Label for="search">Pesquisar</Label>
-            <div class="relative">
-              <Search class="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                id="search"
-                v-model="searchQuery"
-                placeholder="ID Pedido ou Pagamento"
-                class="pl-8"
-              />
-            </div>
-          </div>
-
+        <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <!-- Payment Method Filter -->
           <div class="space-y-2">
             <Label for="filter-method">Método de Pagamento</Label>
@@ -356,65 +417,22 @@ onMounted(() => {
       </CardContent>
     </Card>
 
-    <!-- Payments Table -->
+    <!-- Advanced Data Table -->
     <Card class="flex-1 flex flex-col">
       <CardHeader>
-        <CardTitle class="text-lg">
-          Pagamentos ({{ filteredPayments.length }})
-        </CardTitle>
+        <CardTitle class="text-lg">Pagamentos</CardTitle>
       </CardHeader>
-      <CardContent class="flex-1 overflow-auto">
-        <!-- Loading State -->
-        <div v-if="isLoading" class="space-y-2">
-          <Skeleton class="h-12 w-full" />
-          <Skeleton class="h-12 w-full" />
-          <Skeleton class="h-12 w-full" />
+      <CardContent class="flex-1">
+        <DataTableAdvanced
+          v-if="!isLoading"
+          :data="filteredPayments"
+          :columns="columns"
+          search-key="paymentID"
+          search-placeholder="Pesquisar por ID de Pagamento..."
+        />
+        <div v-else class="flex items-center justify-center py-8">
+          <p class="text-muted-foreground">A carregar pagamentos...</p>
         </div>
-
-        <!-- No Data State -->
-        <div v-else-if="filteredPayments.length === 0" class="text-center py-8">
-          <p class="text-muted-foreground">Nenhum pagamento encontrado</p>
-        </div>
-
-        <!-- Table -->
-        <Table v-else>
-          <TableHeader>
-            <TableRow>
-              <TableHead>ID</TableHead>
-              <TableHead>Pedido</TableHead>
-              <TableHead>Data/Hora</TableHead>
-              <TableHead>Método</TableHead>
-              <TableHead>Valor</TableHead>
-              <TableHead>Estado</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="payment in filteredPayments" :key="payment.paymentID">
-              <TableCell class="font-medium">#{{ payment.paymentID }}</TableCell>
-              <TableCell>
-                <router-link
-                  :to="`/pedidos?order=${payment.order}`"
-                  class="text-primary hover:underline"
-                >
-                  Pedido #{{ payment.order }}
-                </router-link>
-              </TableCell>
-              <TableCell>{{ formatDateTime(payment.created_at) }}</TableCell>
-              <TableCell>
-                <div class="flex items-center gap-2">
-                  <component :is="getPaymentMethodIcon(payment.payment_method)" class="h-4 w-4" />
-                  <span>{{ getPaymentMethodLabel(payment.payment_method) }}</span>
-                </div>
-              </TableCell>
-              <TableCell class="font-semibold">€{{ Number(payment.amount).toFixed(2) }}</TableCell>
-              <TableCell>
-                <Badge :variant="getStatusVariant(payment.payment_status)">
-                  {{ getStatusLabel(payment.payment_status) }}
-                </Badge>
-              </TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
       </CardContent>
     </Card>
 
