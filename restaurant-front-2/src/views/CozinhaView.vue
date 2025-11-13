@@ -236,7 +236,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div class="flex h-full flex-col gap-4 p-6 bg-gradient-to-br from-slate-50 to-slate-100">
+  <div class="flex h-full flex-col gap-4 p-6 ">
     <!-- Header -->
     <div class="flex items-center justify-between">
       <div>
