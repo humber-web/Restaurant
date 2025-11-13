@@ -7,6 +7,7 @@ from .views import (
     OrderDetailView,
     CreateOrderView,
     UpdateOrderItemsView,
+    UpdateOrderItemStatusView,
     TransferOrderItemsView,
     DeleteOrderView
 )
@@ -26,6 +27,9 @@ urlpatterns = [
 
     # Update order items
     path('order/<int:pk>/update/', UpdateOrderItemsView.as_view(), name='update-order'),
+
+    # Update individual order item status
+    path('order-item/<int:pk>/status/', UpdateOrderItemStatusView.as_view(), name='update-order-item-status'),
 
     # Transfer items between orders
     path('order/transfer/', TransferOrderItemsView.as_view(), name='transfer-order-items'),

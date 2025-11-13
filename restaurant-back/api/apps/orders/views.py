@@ -266,6 +266,55 @@ class TransferOrderItemsView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class UpdateOrderItemStatusView(APIView):
+    """
+    Update individual order item status.
+    Requires: authentication
+    """
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk, *args, **kwargs):
+        """
+        Update status of a specific order item.
+
+        Request body:
+        {
+            "status": "1" | "2" | "3" | "4"
+        }
+
+        Where:
+        - 1: Pending
+        - 2: Preparing
+        - 3: Ready
+        - 4: Delivered/Cancelled
+        """
+        order_item = get_object_or_404(OrderItem, pk=pk)
+        new_status = request.data.get('status')
+
+        if not new_status:
+            return Response({
+                'detail': 'status field is required.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_status not in ['1', '2', '3', '4']:
+            return Response({
+                'detail': 'Invalid status value. Must be 1, 2, 3, or 4.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update status
+        order_item.status = new_status
+        order_item.save()
+
+        # Return the full order with updated items
+        order = order_item.order
+        serializer = OrderSerializer(order)
+
+        return Response({
+            'detail': 'Order item status updated successfully.',
+            'order': serializer.data
+        }, status=status.HTTP_200_OK)
+
+
 class DeleteOrderView(APIView):
     """
     Delete an order.

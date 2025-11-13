@@ -14,8 +14,8 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = OrderItem
-        fields = ['menu_item', 'name', 'quantity', 'price', 'status', 'to_be_prepared_in', 'is_paid', 'remaining_quantity']
-        read_only_fields = ['price', 'name', 'to_be_prepared_in', 'is_paid', 'remaining_quantity']
+        fields = ['id', 'menu_item', 'name', 'quantity', 'price', 'status', 'to_be_prepared_in', 'is_paid', 'remaining_quantity']
+        read_only_fields = ['id', 'price', 'name', 'to_be_prepared_in', 'is_paid', 'remaining_quantity']
 
     def get_name(self, obj):
         return obj.menu_item.name

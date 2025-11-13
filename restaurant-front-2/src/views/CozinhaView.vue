@@ -144,19 +144,16 @@ const statistics = computed(() => {
 })
 
 // Update order item status
-async function updateItemStatus(order: Order, itemIndex: number, newStatus: string) {
+async function updateItemStatus(item: OrderItem, newStatus: string) {
   try {
-    isLoading.value = true
-
-    const updatedItems = [...order.items]
-    updatedItems[itemIndex] = {
-      ...updatedItems[itemIndex],
-      status: newStatus as any
+    if (!item.id) {
+      showToast('Item ID não encontrado', 'error')
+      return
     }
 
-    await ordersApi.updateOrder(order.orderID, {
-      items: updatedItems
-    })
+    isLoading.value = true
+
+    await ordersApi.updateOrderItemStatus(item.id, newStatus)
 
     showToast('Estado atualizado com sucesso')
   } catch (error) {
@@ -168,18 +165,18 @@ async function updateItemStatus(order: Order, itemIndex: number, newStatus: stri
 }
 
 // Mark item as preparing (status 1 -> 2)
-async function startPreparing(order: Order, itemIndex: number) {
-  await updateItemStatus(order, itemIndex, '2')
+async function startPreparing(item: OrderItem) {
+  await updateItemStatus(item, '2')
 }
 
 // Mark item as ready (status 2 -> 3)
-async function markAsReady(order: Order, itemIndex: number) {
-  await updateItemStatus(order, itemIndex, '3')
+async function markAsReady(item: OrderItem) {
+  await updateItemStatus(item, '3')
 }
 
 // Mark item as delivered (status 3 -> 4)
-async function markAsDelivered(order: Order, itemIndex: number) {
-  await updateItemStatus(order, itemIndex, '4')
+async function markAsDelivered(item: OrderItem) {
+  await updateItemStatus(item, '4')
 }
 
 // Format time
@@ -374,7 +371,7 @@ onUnmounted(() => {
                         v-if="item.status === '1'"
                         size="sm"
                         variant="outline"
-                        @click="startPreparing(order, index)"
+                        @click="startPreparing(item)"
                         :disabled="isLoading"
                         class="whitespace-nowrap"
                       >
@@ -386,7 +383,7 @@ onUnmounted(() => {
                         v-if="item.status === '2'"
                         size="sm"
                         variant="default"
-                        @click="markAsReady(order, index)"
+                        @click="markAsReady(item)"
                         :disabled="isLoading"
                         class="whitespace-nowrap"
                       >
@@ -398,7 +395,7 @@ onUnmounted(() => {
                         v-if="item.status === '3'"
                         size="sm"
                         variant="secondary"
-                        @click="markAsDelivered(order, index)"
+                        @click="markAsDelivered(item)"
                         :disabled="isLoading"
                         class="whitespace-nowrap"
                       >
