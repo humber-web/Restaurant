@@ -49,6 +49,7 @@ const showCloseDialog = ref(false)
 const declaredCash = ref<string>('0.00')
 const declaredCard = ref<string>('0.00')
 const closeSummary = ref<CashRegisterSummary | null>(null)
+const showSummaryDialog = ref(false)
 
 // Insert/Extract money dialog
 const showMoneyDialog = ref(false)
@@ -152,6 +153,7 @@ async function closeCashRegister() {
 
     cashRegister.value = null
     showCloseDialog.value = false
+    showSummaryDialog.value = true // Show summary dialog
     showToast('Caixa fechada com sucesso!', 'success')
 
     // Reset form
@@ -494,7 +496,7 @@ onMounted(() => {
     </Dialog>
 
     <!-- Close Summary Dialog -->
-    <Dialog v-model:open="!!closeSummary">
+    <Dialog v-model:open="showSummaryDialog">
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Resumo do Fecho</DialogTitle>
@@ -540,7 +542,7 @@ onMounted(() => {
           </div>
         </div>
         <DialogFooter>
-          <Button @click="closeSummary = null">
+          <Button @click="showSummaryDialog = false; closeSummary = null">
             Fechar
           </Button>
         </DialogFooter>
