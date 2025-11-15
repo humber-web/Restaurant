@@ -45,10 +45,10 @@ const data = {
           title: "Vista Geral",
           url: "/mesas",
         },
-        {
-          title: "Gestão de Pedidos",
-          url: "/mesas/pedidos",
-        },
+        // {
+        //   title: "Gestão de Pedidos",
+        //   url: "/mesas/pedidos",
+        // },
       ],
     },
     {
