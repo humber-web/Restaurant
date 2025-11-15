@@ -437,10 +437,8 @@ async function processPayment() {
     paymentSuccess.value = true
     changeDue.value = parseFloat(response.change_due)
 
-    // Auto-redirect after 5 seconds (increased to allow e-Fatura generation)
-    setTimeout(() => {
-      router.push('/pagamentos')
-    }, 5000)
+    // No auto-redirect - let user decide when to leave
+    // They may want to print receipt or generate e-Fatura
   } catch (error: any) {
     const errorMessage = error.response?.data?.error || error.message || 'Erro ao processar pagamento'
     const hint = error.response?.data?.hint
@@ -623,7 +621,7 @@ onMounted(() => {
             </Button>
 
             <Button
-              v-if="!eFaturaGenerated"
+              v-if="lastPaymentId && !eFaturaGenerated"
               variant="default"
               @click="openEFaturaDialog"
               class="w-full"
@@ -632,7 +630,7 @@ onMounted(() => {
               Gerar e-Fatura
             </Button>
 
-            <div v-else class="w-full p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div v-if="lastPaymentId && eFaturaGenerated" class="w-full p-3 bg-green-50 border border-green-200 rounded-lg">
               <div class="flex items-center gap-2 text-sm text-green-900 mb-2">
                 <Check class="h-4 w-4" />
                 <span class="font-semibold">e-Fatura gerada com sucesso!</span>
@@ -655,9 +653,16 @@ onMounted(() => {
               </Button>
             </div>
 
-            <p class="text-sm text-muted-foreground">
-              A redirecionar para pagamentos em 5 segundos...
-            </p>
+            <Separator />
+
+            <Button
+              variant="default"
+              size="lg"
+              @click="router.push('/pagamentos')"
+              class="w-full"
+            >
+              Voltar para Pagamentos
+            </Button>
           </div>
         </CardContent>
       </Card>

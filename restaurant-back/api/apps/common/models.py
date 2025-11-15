@@ -170,3 +170,95 @@ class CompanySettings(models.Model):
 
     def __str__(self):
         return f"{self.company_name} (NIF: {self.tax_registration_number})"
+
+
+class TaxRate(models.Model):
+    """
+    Tax rates (IVA) configuration with historical tracking.
+    Allows different tax rates for different periods.
+    """
+    TAX_TYPE_CHOICES = [
+        ('NOR', 'Normal'),
+        ('RED', 'Reduzida'),
+        ('ISE', 'Isento'),
+        ('OUT', 'Outro'),
+    ]
+
+    tax_code = models.CharField(
+        max_length=10,
+        choices=TAX_TYPE_CHOICES,
+        verbose_name="Código de IVA"
+    )
+    description = models.CharField(
+        max_length=100,
+        verbose_name="Descrição",
+        help_text="Ex: 'IVA Normal 15%', 'IVA Reduzido 8%'"
+    )
+    percentage = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        verbose_name="Percentagem (%)",
+        help_text="Ex: 15.00 para 15%"
+    )
+    valid_from = models.DateField(
+        verbose_name="Válido desde",
+        help_text="Data de início de aplicação desta taxa"
+    )
+    valid_to = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Válido até",
+        help_text="Deixe em branco se ainda estiver ativa"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name="Ativa",
+        help_text="Taxa atualmente em uso"
+    )
+
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'apps_common_tax_rate'
+        ordering = ['-valid_from', 'tax_code']
+        verbose_name = 'Tax Rate'
+        verbose_name_plural = 'Tax Rates'
+        indexes = [
+            models.Index(fields=['tax_code', 'valid_from']),
+            models.Index(fields=['is_active']),
+        ]
+
+    def __str__(self):
+        active_status = "✓" if self.is_active else "✗"
+        return f"{active_status} {self.description} - {self.percentage}% (desde {self.valid_from})"
+
+    @classmethod
+    def get_active_rate(cls, tax_code='NOR', as_of_date=None):
+        """
+        Get the active tax rate for a given tax code and date.
+        If no date is provided, uses today's date.
+        """
+        from datetime import date
+        if as_of_date is None:
+            as_of_date = date.today()
+
+        rate = cls.objects.filter(
+            tax_code=tax_code,
+            is_active=True,
+            valid_from__lte=as_of_date
+        ).filter(
+            models.Q(valid_to__isnull=True) | models.Q(valid_to__gte=as_of_date)
+        ).first()
+
+        return rate
+
+    def clean(self):
+        """Validate that dates make sense"""
+        if self.valid_to and self.valid_from and self.valid_to < self.valid_from:
+            raise ValidationError("A data final não pode ser anterior à data inicial.")
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
