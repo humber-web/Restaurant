@@ -106,6 +106,38 @@ class LoginView(APIView):
         )
 
 
+class CurrentUserView(APIView):
+    """
+    Get current authenticated user details.
+    GET /api/user/me/
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, format=None):
+        user = request.user
+        serializer = UserSerializer(user)
+
+        # Get user profile if it exists
+        try:
+            profile = Profile.objects.get(user=user)
+            profile_serializer = ProfileSerializer(profile)
+            profile_data = profile_serializer.data
+        except Profile.DoesNotExist:
+            profile_data = None
+
+        # Get user groups
+        groups = user.groups.all()
+        group_names = [g.name for g in groups]
+
+        return Response({
+            'user': serializer.data,
+            'profile': profile_data,
+            'groups': group_names,
+            'is_staff': user.is_staff,
+            'is_superuser': user.is_superuser,
+        })
+
+
 class UserListView(APIView):
     """
     List all users.

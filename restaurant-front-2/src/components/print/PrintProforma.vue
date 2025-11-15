@@ -1,37 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { Order, Payment } from '@/types/models'
+import type { Order } from '@/types/models'
 
 interface Props {
   order: Order
-  payments?: Payment[]
 }
 
 const props = defineProps<Props>()
-
-const paymentMethodNames = {
-  CASH: 'Dinheiro',
-  CREDIT_CARD: 'Cartão de Crédito',
-  DEBIT_CARD: 'Cartão de Débito',
-  ONLINE: 'Pagamento Online',
-}
-
-const totalPaid = computed(() => {
-  if (!props.payments || props.payments.length === 0) {
-    return 0
-  }
-  return props.payments
-    .filter(p => p.payment_status === 'COMPLETED')
-    .reduce((sum, p) => sum + Number(p.amount), 0)
-})
-
-const remainingAmount = computed(() => {
-  return Number(props.order.grandTotal) - totalPaid.value
-})
-
-const isPaid = computed(() => {
-  return props.order.paymentStatus === 'PAID' || remainingAmount.value <= 0
-})
 
 function formatDateTime(dateString: string): string {
   const date = new Date(dateString)
@@ -50,16 +25,21 @@ function getTableDisplay(): string {
   }
   return props.order.details.table ? `Mesa ${props.order.details.table}` : 'Balcão'
 }
+
+const totalItems = computed(() => {
+  return props.order.items.reduce((sum, item) => sum + item.quantity, 0)
+})
 </script>
 
 <template>
-  <div :id="`receipt-${order.orderID}`" class="print-receipt">
+  <div :id="`proforma-${order.orderID}`" class="print-proforma">
     <div class="print-header">
       <h1>RESTAURANTE</h1>
       <p>Sistema de Gestão</p>
       <p>NIF: 123456789</p>
       <p>━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
-      <p style="font-weight: bold; margin-top: 8px;">FATURA SIMPLIFICADA</p>
+      <p style="font-weight: bold; margin-top: 8px;">FATURA PROFORMA</p>
+      <p style="font-size: 10px; margin-top: 4px;">(Documento não fiscal)</p>
     </div>
 
     <div class="print-section">
@@ -75,10 +55,14 @@ function getTableDisplay(): string {
         <span class="print-label">Data:</span>
         <span>{{ formatDateTime(order.created_at) }}</span>
       </div>
+      <div class="print-row">
+        <span class="print-label">Estado:</span>
+        <span>{{ order.status === 'PENDING' ? 'Pendente' : order.status === 'PREPARING' ? 'Em Preparação' : order.status === 'READY' ? 'Pronto' : order.status }}</span>
+      </div>
     </div>
 
     <div class="print-section">
-      <p style="font-weight: bold; margin-bottom: 8px;">ITEMS</p>
+      <p style="font-weight: bold; margin-bottom: 8px;">ITEMS DO PEDIDO</p>
       <div class="print-items">
         <div v-for="(item, index) in order.items" :key="index" class="print-item">
           <div class="print-item-row">
@@ -94,6 +78,10 @@ function getTableDisplay(): string {
 
     <div class="print-section">
       <div class="print-row">
+        <span>Total de Items:</span>
+        <span>{{ totalItems }}</span>
+      </div>
+      <div class="print-row">
         <span>Subtotal:</span>
         <span>{{ Number(order.totalAmount).toFixed(2) }}€</span>
       </div>
@@ -103,38 +91,25 @@ function getTableDisplay(): string {
       </div>
       <div class="print-total">
         <div class="print-row">
-          <span>TOTAL:</span>
+          <span>TOTAL A PAGAR:</span>
           <span>{{ Number(order.grandTotal).toFixed(2) }}€</span>
         </div>
       </div>
     </div>
 
-    <div v-if="payments && payments.length > 0" class="print-section">
-      <p style="font-weight: bold; margin-bottom: 8px;">PAGAMENTOS</p>
-      <div v-for="payment in payments" :key="payment.paymentID" class="print-row">
-        <span>{{ paymentMethodNames[payment.payment_method] }}</span>
-        <span>{{ Number(payment.amount).toFixed(2) }}€</span>
-      </div>
-      <div class="print-total" style="margin-top: 8px;">
-        <div class="print-row">
-          <span>Total Pago:</span>
-          <span>{{ totalPaid.toFixed(2) }}€</span>
-        </div>
-        <div v-if="!isPaid" class="print-row" style="font-size: 11px;">
-          <span>Restante:</span>
-          <span>{{ remainingAmount.toFixed(2) }}€</span>
-        </div>
-      </div>
-    </div>
-
-    <div v-if="isPaid" class="print-section" style="text-align: center; font-weight: bold;">
-      <p>✓ PAGO</p>
+    <div class="print-section" style="border-bottom: none;">
+      <p style="text-align: center; font-size: 10px; margin-bottom: 4px;">
+        Este documento é uma estimativa do valor a pagar
+      </p>
+      <p style="text-align: center; font-size: 10px;">
+        Não tem valor fiscal
+      </p>
     </div>
 
     <div class="print-footer">
       <p>━━━━━━━━━━━━━━━━━━━━━━━━━━</p>
       <p>Obrigado pela sua preferência!</p>
-      <p style="margin-top: 4px;">Volte sempre!</p>
+      <p style="margin-top: 4px;">Bom apetite!</p>
       <p style="margin-top: 8px; font-size: 10px;">
         Impresso em: {{ new Date().toLocaleString('pt-PT') }}
       </p>
@@ -146,7 +121,7 @@ function getTableDisplay(): string {
 </template>
 
 <style scoped>
-.print-receipt {
+.print-proforma {
   width: 80mm;
   max-width: 300px;
   margin: 0 auto;
@@ -168,13 +143,13 @@ function getTableDisplay(): string {
 
 /* Hide from screen, only show when printing */
 @media screen {
-  .print-receipt {
+  .print-proforma {
     display: none;
   }
 }
 
 @media print {
-  .print-receipt {
+  .print-proforma {
     display: block;
   }
 

@@ -67,7 +67,7 @@ export function usePrint() {
               font-size: 12px;
               line-height: 1.4;
               color: #000;
-              background: #fff;
+              padding: 12px;
             }
 
             @page {
@@ -78,7 +78,7 @@ export function usePrint() {
             @media print {
               body {
                 margin: 0;
-                padding: 0;
+                padding: 12px;
               }
             }
 
@@ -160,11 +160,11 @@ export function usePrint() {
             .station-badge {
               display: inline-block;
               padding: 2px 6px;
-              background: #000;
-              color: #fff;
+              border: 1px solid #000;
               font-size: 10px;
               border-radius: 3px;
               margin-left: 4px;
+              font-weight: bold;
             }
 
             .status-badge {

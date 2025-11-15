@@ -122,7 +122,6 @@ function getTableDisplay(): string {
   max-width: 300px;
   margin: 0 auto;
   padding: 8px;
-  background: white;
 }
 
 /* Hide from screen, only show when printing */

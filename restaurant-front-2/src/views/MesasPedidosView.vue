@@ -44,11 +44,17 @@ import {
   Wine,
   Store,
   ArrowLeft,
+  Printer,
 } from 'lucide-vue-next'
+import PrintProforma from '@/components/print/PrintProforma.vue'
+import { usePrint } from '@/composables/usePrint'
 
 const route = useRoute()
 const router = useRouter()
 const ordersStore = useOrdersStore()
+
+// Print composable
+const { printElement } = usePrint()
 
 // Toast notifications
 const toastMessage = ref<string | null>(null)
@@ -465,6 +471,22 @@ function openPaymentDialog() {
   router.push({ path: '/pagamentos/processar', query: { order: currentOrder.value.orderID } })
 }
 
+// Print proforma invoice
+function printProforma() {
+  if (!currentOrder.value) return
+
+  const elementId = `proforma-${currentOrder.value.orderID}`
+  printElement(elementId, {
+    title: `Proforma - Pedido #${currentOrder.value.orderID}`,
+    onBeforePrint: () => {
+      console.log('Imprimindo proforma...')
+    },
+    onAfterPrint: () => {
+      showToast('Proforma impressa com sucesso')
+    },
+  })
+}
+
 // Get item name from menu
 function getItemName(menuItemId: number): string {
   const item = menuItems.value.find(m => m.itemID === menuItemId)
@@ -615,6 +637,10 @@ onUnmounted(() => {
           <Button class="w-full" size="lg" @click="openPaymentDialog">
             <CreditCard class="mr-2 h-4 w-4" />
             Processar Pagamento
+          </Button>
+          <Button class="w-full" variant="outline" @click="printProforma">
+            <Printer class="mr-2 h-4 w-4" />
+            Imprimir Proforma
           </Button>
           <Button class="w-full" variant="outline" @click="openTransferDialog">
             <ArrowRightLeft class="mr-2 h-4 w-4" />
@@ -855,6 +881,9 @@ onUnmounted(() => {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <!-- Hidden Print Template -->
+    <PrintProforma v-if="currentOrder" :order="currentOrder" />
 
   </div>
 </template>
