@@ -143,19 +143,19 @@ onMounted(() => {
       <Card>
         <CardHeader class="pb-2">
           <CardDescription>Valor Total</CardDescription>
-          <CardTitle class="text-3xl text-green-600">€{{ statistics.totalAmount.toFixed(2) }}</CardTitle>
+          <CardTitle class="text-3xl text-green-600">CVE{{ statistics.totalAmount.toFixed(2) }}</CardTitle>
         </CardHeader>
       </Card>
       <Card>
         <CardHeader class="pb-2">
           <CardDescription>Dinheiro</CardDescription>
-          <CardTitle class="text-2xl">€{{ statistics.byMethod.CASH.toFixed(2) }}</CardTitle>
+          <CardTitle class="text-2xl">CVE{{ statistics.byMethod.CASH.toFixed(2) }}</CardTitle>
         </CardHeader>
       </Card>
       <Card>
         <CardHeader class="pb-2">
           <CardDescription>Cartão</CardDescription>
-          <CardTitle class="text-2xl">€{{ statistics.byMethod.CARD.toFixed(2) }}</CardTitle>
+          <CardTitle class="text-2xl">CVE{{ statistics.byMethod.CARD.toFixed(2) }}</CardTitle>
         </CardHeader>
       </Card>
     </div>

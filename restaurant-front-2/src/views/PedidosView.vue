@@ -182,7 +182,7 @@ onMounted(() => {
           <CreditCard class="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold">€{{ statistics.totalRevenue.toFixed(2) }}</div>
+          <div class="text-2xl font-bold">CVE{{ statistics.totalRevenue.toFixed(2) }}</div>
           <p class="text-xs text-muted-foreground mt-1">
             Pedidos pagos: {{ statistics.byPaymentStatus.PAID }}
           </p>
@@ -195,7 +195,7 @@ onMounted(() => {
           <CheckCircle class="h-4 w-4 text-muted-foreground" />
         </CardHeader>
         <CardContent>
-          <div class="text-2xl font-bold">€{{ statistics.averageOrderValue.toFixed(2) }}</div>
+          <div class="text-2xl font-bold">CVE{{ statistics.averageOrderValue.toFixed(2) }}</div>
           <p class="text-xs text-muted-foreground mt-1">
             Por pedido pago
           </p>

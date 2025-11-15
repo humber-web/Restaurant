@@ -141,7 +141,7 @@ const columns: ColumnDef<Payment>[] = [
     header: createSortableHeader('Valor', 'amount'),
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue('amount'))
-      return h('span', { class: 'font-semibold' }, `€${amount.toFixed(2)}`)
+      return h('span', { class: 'font-semibold' }, `CVE${amount.toFixed(2)}`)
     },
     enableHiding: true,
     meta: {

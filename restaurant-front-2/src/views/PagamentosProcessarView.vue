@@ -388,7 +388,7 @@ async function processPayment() {
   const amountNeeded = orderTotals.value.remainingAmount > 0 ? orderTotals.value.remainingAmount : orderTotals.value.grandTotal
   if (amount < amountNeeded) {
     const stillOwed = amountNeeded - amount
-    if (!confirm(`Pagamento parcial de €${amount.toFixed(2)}. Ainda faltam €${stillOwed.toFixed(2)} para completar o pagamento. Continuar?`)) {
+    if (!confirm(`Pagamento parcial de CVE${amount.toFixed(2)}. Ainda faltam CVE${stillOwed.toFixed(2)} para completar o pagamento. Continuar?`)) {
       return
     }
   }
@@ -531,11 +531,11 @@ onMounted(() => {
             <div class="w-full space-y-2">
               <div class="flex justify-between">
                 <span class="text-muted-foreground">Total Pago:</span>
-                <span class="font-semibold">€{{ parseFloat(paymentAmount).toFixed(2) }}</span>
+                <span class="font-semibold">CVE{{ parseFloat(paymentAmount).toFixed(2) }}</span>
               </div>
               <div v-if="paymentMethod === 'CASH' && changeDue > 0" class="flex justify-between text-lg">
                 <span class="font-medium">Troco:</span>
-                <span class="font-bold text-green-600">€{{ changeDue.toFixed(2) }}</span>
+                <span class="font-bold text-green-600">CVE{{ changeDue.toFixed(2) }}</span>
               </div>
             </div>
 
@@ -618,7 +618,7 @@ onMounted(() => {
                       <div class="flex-1">
                         <div class="font-medium">{{ getItemName(item.menu_item) }}</div>
                         <div class="text-xs text-muted-foreground">
-                          €{{ Number(item.price).toFixed(2) }} cada
+                          CVE{{ Number(item.price).toFixed(2) }} cada
                           <span v-if="(item as any).remaining_quantity < item.quantity" class="text-orange-600">
                             • {{ (item as any).remaining_quantity }} de {{ item.quantity }} restantes
                           </span>
@@ -639,7 +639,7 @@ onMounted(() => {
                           @click.stop
                         />
                         <span class="font-semibold w-20 text-right">
-                          €{{ (Number(item.price) * getSelectedQuantity(item.menu_item)).toFixed(2) }}
+                          CVE{{ (Number(item.price) * getSelectedQuantity(item.menu_item)).toFixed(2) }}
                         </span>
                       </div>
                     </div>
@@ -653,24 +653,24 @@ onMounted(() => {
               <div class="space-y-2">
                 <div class="flex justify-between text-sm">
                   <span class="text-muted-foreground">Total do Pedido:</span>
-                  <span>€{{ orderTotals.grandTotal.toFixed(2) }}</span>
+                  <span>CVE{{ orderTotals.grandTotal.toFixed(2) }}</span>
                 </div>
                 <div v-if="orderTotals.totalPaid > 0" class="flex justify-between text-sm">
                   <span class="text-muted-foreground">Já Pago:</span>
-                  <span class="text-green-600 font-semibold">-€{{ orderTotals.totalPaid.toFixed(2) }}</span>
+                  <span class="text-green-600 font-semibold">-CVE{{ orderTotals.totalPaid.toFixed(2) }}</span>
                 </div>
                 <div v-if="orderTotals.totalPaid > 0" class="flex justify-between text-sm">
                   <span class="text-muted-foreground">Restante:</span>
-                  <span class="font-semibold">€{{ orderTotals.remainingAmount.toFixed(2) }}</span>
+                  <span class="font-semibold">CVE{{ orderTotals.remainingAmount.toFixed(2) }}</span>
                 </div>
                 <div class="flex justify-between text-sm">
                   <span class="text-muted-foreground">Itens Selecionados:</span>
-                  <span class="font-semibold">€{{ selectedItemsTotal.toFixed(2) }}</span>
+                  <span class="font-semibold">CVE{{ selectedItemsTotal.toFixed(2) }}</span>
                 </div>
                 <Separator />
                 <div class="flex justify-between text-xl font-bold">
                   <span>A Pagar Agora:</span>
-                  <span class="text-primary">€{{ selectedItemsTotal.toFixed(2) }}</span>
+                  <span class="text-primary">CVE{{ selectedItemsTotal.toFixed(2) }}</span>
                 </div>
               </div>
             </div>
@@ -686,7 +686,7 @@ onMounted(() => {
             <div class="space-y-1 text-sm">
               <div class="flex justify-between">
                 <span class="text-muted-foreground">Valor Inicial:</span>
-                <span class="font-semibold">€{{ Number(cashRegister.initial_amount).toFixed(2) }}</span>
+                <span class="font-semibold">CVE{{ Number(cashRegister.initial_amount).toFixed(2) }}</span>
               </div>
               <div class="flex justify-between">
                 <span class="text-muted-foreground">Estado:</span>
@@ -786,7 +786,7 @@ onMounted(() => {
             <div class="space-y-2">
               <Label>Valor Recebido</Label>
               <div class="relative">
-                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-muted-foreground">€</span>
+                <span class="absolute left-4 top-1/2 -translate-y-1/2 text-2xl text-muted-foreground">CVE</span>
                 <Input
                   v-model="paymentAmount"
                   type="text"
@@ -801,7 +801,7 @@ onMounted(() => {
               </div>
               <div v-if="paymentStatus === 'partial'" class="flex items-center gap-2">
                 <Badge variant="secondary" class="text-xs">
-                  Pagamento Parcial: Ainda faltam €{{ ((orderTotals.remainingAmount > 0 ? orderTotals.remainingAmount : orderTotals.grandTotal) - parseFloat(paymentAmount || '0')).toFixed(2) }}
+                  Pagamento Parcial: Ainda faltam CVE{{ ((orderTotals.remainingAmount > 0 ? orderTotals.remainingAmount : orderTotals.grandTotal) - parseFloat(paymentAmount || '0')).toFixed(2) }}
                 </Badge>
               </div>
             </div>
@@ -838,7 +838,7 @@ onMounted(() => {
               <div class="flex justify-between items-center">
                 <span class="text-lg font-semibold text-green-900 dark:text-green-200">Troco:</span>
                 <span class="text-3xl font-bold text-green-700 dark:text-green-300">
-                  €{{ calculatedChange.toFixed(2) }}
+                  CVE{{ calculatedChange.toFixed(2) }}
                 </span>
               </div>
             </div>
@@ -886,7 +886,7 @@ onMounted(() => {
           <div class="space-y-2">
             <Label>Valor Inicial da Caixa</Label>
             <div class="relative">
-              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">€</span>
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">CVE</span>
               <Input
                 v-model="initialAmount"
                 type="number"

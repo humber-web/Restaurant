@@ -400,7 +400,7 @@ onUnmounted(() => {
             </div>
             <div class="flex items-center justify-between text-sm">
               <span class="text-muted-foreground">Total:</span>
-              <span class="font-bold text-lg">€{{ Number(table.currentOrder.grandTotal || 0).toFixed(2) }}</span>
+              <span class="font-bold text-lg">CVE{{ Number(table.currentOrder.grandTotal || 0).toFixed(2) }}</span>
             </div>
             <div class="flex items-center gap-2 text-xs text-muted-foreground">
               <Clock class="h-3 w-3" />

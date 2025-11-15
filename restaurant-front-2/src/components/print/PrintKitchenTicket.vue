@@ -87,7 +87,7 @@ function getTableDisplay(): string {
           </div>
           <div class="print-item-details">
             <span>Estado: {{ statusNames[item.status] }}</span>
-            <span>{{ Number(item.price).toFixed(2) }}€</span>
+            <span>{{ Number(item.price).toFixed(2) }}CVE</span>
           </div>
         </div>
       </div>

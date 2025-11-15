@@ -24,7 +24,7 @@ defineProps<Props>()
 
 // Helper functions
 function formatCurrency(value: number): string {
-  return `€${value.toFixed(2)}`
+  return `CVE${value.toFixed(2)}`
 }
 
 // Column definitions

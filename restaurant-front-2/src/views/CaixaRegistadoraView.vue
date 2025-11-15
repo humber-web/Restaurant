@@ -298,7 +298,7 @@ onMounted(() => {
         </CardHeader>
         <CardContent class="space-y-4">
           <div class="space-y-2">
-            <Label for="initial-amount">Valor Inicial (€)</Label>
+            <Label for="initial-amount">Valor Inicial (CVE)</Label>
             <Input
               id="initial-amount"
               v-model="initialAmount"
@@ -337,7 +337,7 @@ onMounted(() => {
           <Separator />
           <div class="flex justify-between items-center">
             <span class="text-sm text-muted-foreground">Valor Inicial:</span>
-            <span class="text-lg font-bold">€{{ Number(cashRegister.initial_amount).toFixed(2) }}</span>
+            <span class="text-lg font-bold">CVE{{ Number(cashRegister.initial_amount).toFixed(2) }}</span>
           </div>
         </CardContent>
       </Card>
@@ -353,26 +353,26 @@ onMounted(() => {
               <Wallet class="h-4 w-4 text-green-600" />
               <span class="text-sm text-muted-foreground">Dinheiro:</span>
             </div>
-            <span class="text-sm font-medium">€{{ Number(cashRegister.operations_cash || 0).toFixed(2) }}</span>
+            <span class="text-sm font-medium">CVE{{ Number(cashRegister.operations_cash || 0).toFixed(2) }}</span>
           </div>
           <div class="flex justify-between items-center">
             <div class="flex items-center gap-2">
               <CreditCard class="h-4 w-4 text-blue-600" />
               <span class="text-sm text-muted-foreground">Cartão:</span>
             </div>
-            <span class="text-sm font-medium">€{{ Number(cashRegister.operations_card || 0).toFixed(2) }}</span>
+            <span class="text-sm font-medium">CVE{{ Number(cashRegister.operations_card || 0).toFixed(2) }}</span>
           </div>
           <div class="flex justify-between items-center">
             <div class="flex items-center gap-2">
               <DollarSign class="h-4 w-4 text-purple-600" />
               <span class="text-sm text-muted-foreground">Outros:</span>
             </div>
-            <span class="text-sm font-medium">€{{ Number(cashRegister.operations_other || 0).toFixed(2) }}</span>
+            <span class="text-sm font-medium">CVE{{ Number(cashRegister.operations_other || 0).toFixed(2) }}</span>
           </div>
           <Separator />
           <div class="flex justify-between items-center">
             <span class="text-sm font-semibold">Total Operações:</span>
-            <span class="text-lg font-bold text-primary">€{{ totalOperations.toFixed(2) }}</span>
+            <span class="text-lg font-bold text-primary">CVE{{ totalOperations.toFixed(2) }}</span>
           </div>
         </CardContent>
       </Card>
@@ -385,16 +385,16 @@ onMounted(() => {
         <CardContent class="space-y-3">
           <div class="flex justify-between items-center">
             <span class="text-sm text-muted-foreground">Inicial:</span>
-            <span class="text-sm font-medium">€{{ Number(cashRegister.initial_amount).toFixed(2) }}</span>
+            <span class="text-sm font-medium">CVE{{ Number(cashRegister.initial_amount).toFixed(2) }}</span>
           </div>
           <div class="flex justify-between items-center">
             <span class="text-sm text-muted-foreground">+ Operações:</span>
-            <span class="text-sm font-medium">€{{ Number(cashRegister.operations_cash || 0).toFixed(2) }}</span>
+            <span class="text-sm font-medium">CVE{{ Number(cashRegister.operations_cash || 0).toFixed(2) }}</span>
           </div>
           <Separator />
           <div class="flex justify-between items-center">
             <span class="text-sm font-semibold">Total Esperado:</span>
-            <span class="text-2xl font-bold text-green-600">€{{ expectedCashAmount.toFixed(2) }}</span>
+            <span class="text-2xl font-bold text-green-600">CVE{{ expectedCashAmount.toFixed(2) }}</span>
           </div>
         </CardContent>
       </Card>
@@ -440,7 +440,7 @@ onMounted(() => {
         </DialogHeader>
         <div class="space-y-4 py-4">
           <div class="space-y-2">
-            <Label for="money-amount">Valor (€)</Label>
+            <Label for="money-amount">Valor (CVE)</Label>
             <Input
               id="money-amount"
               v-model="moneyAmount"
@@ -473,7 +473,7 @@ onMounted(() => {
         </DialogHeader>
         <div class="space-y-4 py-4">
           <div class="space-y-2">
-            <Label for="declared-cash">Dinheiro Contado (€)</Label>
+            <Label for="declared-cash">Dinheiro Contado (CVE)</Label>
             <Input
               id="declared-cash"
               v-model="declaredCash"
@@ -483,11 +483,11 @@ onMounted(() => {
               placeholder="0.00"
             />
             <p class="text-xs text-muted-foreground">
-              Esperado: €{{ expectedCashAmount.toFixed(2) }}
+              Esperado: CVE{{ expectedCashAmount.toFixed(2) }}
             </p>
           </div>
           <div class="space-y-2">
-            <Label for="declared-card">Cartões Contados (€)</Label>
+            <Label for="declared-card">Cartões Contados (CVE)</Label>
             <Input
               id="declared-card"
               v-model="declaredCard"
@@ -497,7 +497,7 @@ onMounted(() => {
               placeholder="0.00"
             />
             <p class="text-xs text-muted-foreground">
-              Esperado: €{{ Number(cashRegister?.operations_card || 0).toFixed(2) }}
+              Esperado: CVE{{ Number(cashRegister?.operations_card || 0).toFixed(2) }}
             </p>
           </div>
         </div>
@@ -526,16 +526,16 @@ onMounted(() => {
             <h3 class="font-semibold">Dinheiro</h3>
             <div class="flex justify-between text-sm">
               <span class="text-muted-foreground">Esperado:</span>
-              <span>€{{ Number(closeSummary.expected_cash || 0).toFixed(2) }}</span>
+              <span>CVE{{ Number(closeSummary.expected_cash || 0).toFixed(2) }}</span>
             </div>
             <div class="flex justify-between text-sm">
               <span class="text-muted-foreground">Declarado:</span>
-              <span>€{{ Number(closeSummary.declared_cash || 0).toFixed(2) }}</span>
+              <span>CVE{{ Number(closeSummary.declared_cash || 0).toFixed(2) }}</span>
             </div>
             <div class="flex justify-between text-sm font-semibold">
               <span>Diferença:</span>
               <span :class="Number(closeSummary.cash_difference || 0) >= 0 ? 'text-green-600' : 'text-red-600'">
-                {{ Number(closeSummary.cash_difference || 0) >= 0 ? '+' : '' }}€{{ Number(closeSummary.cash_difference || 0).toFixed(2) }}
+                {{ Number(closeSummary.cash_difference || 0) >= 0 ? '+' : '' }}CVE{{ Number(closeSummary.cash_difference || 0).toFixed(2) }}
               </span>
             </div>
           </div>
@@ -544,16 +544,16 @@ onMounted(() => {
             <h3 class="font-semibold">Cartão</h3>
             <div class="flex justify-between text-sm">
               <span class="text-muted-foreground">Esperado:</span>
-              <span>€{{ Number(closeSummary.expected_card || 0).toFixed(2) }}</span>
+              <span>CVE{{ Number(closeSummary.expected_card || 0).toFixed(2) }}</span>
             </div>
             <div class="flex justify-between text-sm">
               <span class="text-muted-foreground">Declarado:</span>
-              <span>€{{ Number(closeSummary.declared_card || 0).toFixed(2) }}</span>
+              <span>CVE{{ Number(closeSummary.declared_card || 0).toFixed(2) }}</span>
             </div>
             <div class="flex justify-between text-sm font-semibold">
               <span>Diferença:</span>
               <span :class="Number(closeSummary.card_difference || 0) >= 0 ? 'text-green-600' : 'text-red-600'">
-                {{ Number(closeSummary.card_difference || 0) >= 0 ? '+' : '' }}€{{ Number(closeSummary.card_difference || 0).toFixed(2) }}
+                {{ Number(closeSummary.card_difference || 0) >= 0 ? '+' : '' }}CVE{{ Number(closeSummary.card_difference || 0).toFixed(2) }}
               </span>
             </div>
           </div>
