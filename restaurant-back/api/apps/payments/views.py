@@ -528,10 +528,23 @@ class SignAndSubmitEFaturaView(APIView):
         2. Generate and submit e-Fatura XML
 
         This is the recommended endpoint for normal workflow.
+
+        Optional request body:
+        - customer_tax_id: NIF of the customer (defaults to "999999999" for Consumidor Final)
+        - customer_name: Name of the customer (defaults to "Consumidor Final")
         """
         payment = get_object_or_404(Payment, pk=pk)
 
         try:
+            # Update customer info if provided
+            customer_tax_id = request.data.get('customer_tax_id', '').strip()
+            customer_name = request.data.get('customer_name', '').strip()
+
+            if customer_tax_id:
+                payment.customer_tax_id = customer_tax_id
+                payment.customer_name = customer_name or 'Cliente'
+                payment.save(update_fields=['customer_tax_id', 'customer_name'])
+
             # Step 1: Sign if not signed
             if not payment.is_signed:
                 payment = FiscalService.sign_invoice(payment)
