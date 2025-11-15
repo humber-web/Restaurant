@@ -13,6 +13,15 @@ class Profile(models.Model):
     bio = models.TextField(blank=True)
     location = models.CharField(max_length=30, blank=True)
 
+    # Fiscal Information (for SAF-T CV)
+    tax_id = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        verbose_name="NIF",
+        help_text="Número de Identificação Fiscal do cliente"
+    )
+
     def __str__(self):
         return self.user.username
 

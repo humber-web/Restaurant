@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 
 class Payment(models.Model):
     """
-    Payment records for orders.
+    Payment records for orders with fiscal compliance (SAF-T CV / e-Fatura).
     """
     PAYMENT_METHOD_CHOICES = [
         ('CASH', 'Cash'),
@@ -22,6 +22,14 @@ class Payment(models.Model):
         ('FAILED', 'Failed'),
     ]
 
+    INVOICE_TYPE_CHOICES = [
+        ('FT', 'Fatura'),           # Invoice
+        ('NC', 'Nota de Crédito'),  # Credit Note
+        ('TV', 'Talão de Venda'),   # Sales Receipt (Consumidor Final)
+        ('FR', 'Fatura Recibo'),    # Invoice Receipt
+    ]
+
+    # Original fields
     paymentID = models.AutoField(primary_key=True)
     order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name='payments')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
@@ -42,6 +50,93 @@ class Payment(models.Model):
         null=True,
         blank=True,
         related_name='processed_payments'
+    )
+
+    # ===== FISCAL FIELDS (SAF-T CV / e-Fatura Compliance) =====
+
+    # Invoice Information
+    invoice_no = models.CharField(
+        max_length=60,
+        unique=True,
+        null=True,
+        blank=True,
+        verbose_name="Número da Fatura",
+        help_text="Formato: SÉRIE/ANO/NÚMERO (ex: FT A/2025/00001)"
+    )
+    invoice_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name="Data da Fatura"
+    )
+    invoice_type = models.CharField(
+        max_length=10,
+        choices=INVOICE_TYPE_CHOICES,
+        default='FT',
+        verbose_name="Tipo de Documento"
+    )
+
+    # Digital Signature (Hash Chain)
+    invoice_hash = models.CharField(
+        max_length=256,
+        null=True,
+        blank=True,
+        verbose_name="Hash da Fatura",
+        help_text="SHA-256 hash for invoice integrity"
+    )
+    previous_invoice_hash = models.CharField(
+        max_length=256,
+        null=True,
+        blank=True,
+        verbose_name="Hash da Fatura Anterior",
+        help_text="Links invoices in a chain"
+    )
+    hash_algorithm = models.CharField(
+        max_length=10,
+        default='SHA256',
+        verbose_name="Algoritmo de Hash"
+    )
+
+    # Certification
+    software_certificate_number = models.CharField(
+        max_length=20,
+        default='0',
+        verbose_name="Número de Certificado do Software"
+    )
+
+    # IUD (Identificador Único do Documento)
+    iud = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        unique=True,
+        verbose_name="IUD",
+        help_text="Identificador Único do Documento (45 caracteres)"
+    )
+
+    # Fiscal Status
+    is_signed = models.BooleanField(
+        default=False,
+        verbose_name="Assinado",
+        help_text="Se True, o documento não pode ser editado"
+    )
+    signed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Data de Assinatura"
+    )
+
+    # Customer Info (for SAF-T Customer table)
+    customer_tax_id = models.CharField(
+        max_length=20,
+        null=True,
+        blank=True,
+        verbose_name="NIF do Cliente"
+    )
+    customer_name = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="Nome do Cliente"
     )
 
     def __str__(self):
