@@ -122,6 +122,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/InventarioView.vue'),
         meta: { requiresManager: true },
       },
+      {
+        path: 'configuracoes/fiscal',
+        name: 'configuracoes-fiscal',
+        component: () => import('@/views/ConfiguracaoFiscalView.vue'),
+        meta: { requiresManager: true },
+      },
     ],
   },
 ]

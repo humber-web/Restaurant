@@ -123,6 +123,10 @@ const data = {
           title: "Inventário",
           url: "/configuracoes/inventario",
         },
+        {
+          title: "Configuração Fiscal",
+          url: "/configuracoes/fiscal",
+        },
       ],
     },
   ],
