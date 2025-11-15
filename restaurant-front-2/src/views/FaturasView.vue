@@ -54,7 +54,7 @@ const totalCount = ref(0)
 
 // Filters
 const searchQuery = ref('')
-const invoiceTypeFilter = ref<string>('')
+const invoiceTypeFilter = ref<string>('ALL')
 const startDate = ref('')
 const endDate = ref('')
 
@@ -72,7 +72,7 @@ async function loadInvoices() {
     }
 
     if (searchQuery.value) params.search = searchQuery.value
-    if (invoiceTypeFilter.value) params.invoice_type = invoiceTypeFilter.value as any
+    if (invoiceTypeFilter.value && invoiceTypeFilter.value !== 'ALL') params.invoice_type = invoiceTypeFilter.value as any
     if (startDate.value) params.start_date = startDate.value
     if (endDate.value) params.end_date = endDate.value
 
@@ -94,7 +94,7 @@ function applyFilters() {
 
 function clearFilters() {
   searchQuery.value = ''
-  invoiceTypeFilter.value = ''
+  invoiceTypeFilter.value = 'ALL'
   startDate.value = ''
   endDate.value = ''
   loadInvoices()
@@ -204,7 +204,7 @@ onMounted(() => {
                 <SelectValue placeholder="Todos os tipos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="ALL">Todos</SelectItem>
                 <SelectItem value="FT">Fatura (FT)</SelectItem>
                 <SelectItem value="FR">Fatura Recibo (FR)</SelectItem>
                 <SelectItem value="NC">Nota de Crédito (NC)</SelectItem>
