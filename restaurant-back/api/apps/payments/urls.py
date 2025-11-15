@@ -13,11 +13,15 @@ from .views import (
     GenerateEFaturaView,
     DownloadEFaturaXMLView,
     SignAndSubmitEFaturaView,
+    ListInvoicesView,
 )
 
 urlpatterns = [
     # List all payments
     path('payments/', ListPaymentsView.as_view(), name='list-payments'),
+
+    # List all invoices (signed payments with filters)
+    path('invoices/', ListInvoicesView.as_view(), name='list-invoices'),
 
     # Process payment (create)
     path('payment/process/', ProcessPaymentView.as_view(), name='process-payment'),

@@ -569,3 +569,72 @@ class SignAndSubmitEFaturaView(APIView):
             return Response({
                 'error': f'Failed to sign and submit e-Fatura: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ListInvoicesView(APIView):
+    """
+    List all invoices (signed payments) with advanced filtering.
+    Requires: payments module + authentication + manager permission
+    """
+    permission_classes = [IsAuthenticated, IsManager]
+
+    def get(self, request):
+        """
+        List invoices with filters.
+
+        Query parameters:
+        - invoice_type: Filter by type (FT, FR, NC, TV)
+        - is_signed: Filter by signed status (true/false)
+        - start_date: Start date (YYYY-MM-DD)
+        - end_date: End date (YYYY-MM-DD)
+        - search: Search in invoice_no or customer_name
+        - page: Page number (default: 1)
+        - page_size: Items per page (default: 50, max: 100)
+        """
+        # Base queryset - only signed payments (invoices)
+        invoices = Payment.objects.filter(is_signed=True).select_related('order').order_by('-invoice_date', '-paymentID')
+
+        # Filter by invoice type
+        invoice_type = request.query_params.get('invoice_type')
+        if invoice_type:
+            invoices = invoices.filter(invoice_type=invoice_type)
+
+        # Filter by date range
+        start_date = request.query_params.get('start_date')
+        if start_date:
+            invoices = invoices.filter(invoice_date__gte=start_date)
+
+        end_date = request.query_params.get('end_date')
+        if end_date:
+            invoices = invoices.filter(invoice_date__lte=end_date)
+
+        # Search in invoice number or customer name
+        search = request.query_params.get('search')
+        if search:
+            from django.db.models import Q
+            invoices = invoices.filter(
+                Q(invoice_no__icontains=search) |
+                Q(customer_name__icontains=search) |
+                Q(customer_tax_id__icontains=search)
+            )
+
+        # Pagination
+        page = int(request.query_params.get('page', 1))
+        page_size = min(int(request.query_params.get('page_size', 50)), 100)
+
+        start = (page - 1) * page_size
+        end = start + page_size
+
+        total_count = invoices.count()
+        invoices_page = invoices[start:end]
+
+        # Serialize
+        serializer = PaymentSerializer(invoices_page, many=True)
+
+        return Response({
+            'results': serializer.data,
+            'count': total_count,
+            'page': page,
+            'page_size': page_size,
+            'total_pages': (total_count + page_size - 1) // page_size
+        })
