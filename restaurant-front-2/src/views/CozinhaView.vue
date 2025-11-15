@@ -30,10 +30,16 @@ import {
   Play,
   Check,
   AlertCircle,
+  Printer,
 } from 'lucide-vue-next'
+import PrintKitchenTicket from '@/components/print/PrintKitchenTicket.vue'
+import { usePrint } from '@/composables/usePrint'
 
 // Initialize store
 const ordersStore = useOrdersStore()
+
+// Print composable
+const { printElement } = usePrint()
 
 // State
 const activeStation = ref<string>('1') // 1: Kitchen, 2: Bar, 3: Store
@@ -233,6 +239,20 @@ async function refreshOrders() {
   }
 }
 
+// Print kitchen ticket for specific station
+function printKitchenTicket(order: Order, station?: '1' | '2' | '3') {
+  const elementId = `kitchen-ticket-${order.orderID}${station ? `-${station}` : ''}`
+  printElement(elementId, {
+    title: `Ticket Cozinha - Pedido #${order.orderID}`,
+    onBeforePrint: () => {
+      console.log('Imprimindo ticket da cozinha...')
+    },
+    onAfterPrint: () => {
+      showToast('Ticket impresso com sucesso')
+    },
+  })
+}
+
 // Lifecycle hooks
 onMounted(() => {
   // Initialize WebSocket for real-time updates
@@ -347,9 +367,19 @@ onUnmounted(() => {
             <CardHeader class="pb-3">
               <div class="flex items-center justify-between">
                 <CardTitle class="text-lg">Pedido #{{ order.orderID }}</CardTitle>
-                <Badge variant="outline">
-                  Mesa {{ order.details?.table || '—' }}
-                </Badge>
+                <div class="flex items-center gap-2">
+                  <Badge variant="outline">
+                    Mesa {{ order.details?.table || '—' }}
+                  </Badge>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    @click="printKitchenTicket(order, activeStation as '1' | '2' | '3')"
+                    title="Imprimir Ticket"
+                  >
+                    <Printer class="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               <CardDescription class="flex items-center gap-2">
                 <Clock class="h-3 w-3" />
@@ -451,5 +481,10 @@ onUnmounted(() => {
     >
       {{ toastMessage }}
     </div>
+
+    <!-- Hidden Print Templates -->
+    <template v-for="order in ordersByStation" :key="`print-${order.orderID}`">
+      <PrintKitchenTicket :order="order" :station="activeStation as '1' | '2' | '3'" />
+    </template>
   </div>
 </template>

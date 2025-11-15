@@ -33,10 +33,16 @@ import {
   ArrowLeft,
   DollarSign,
   Delete,
+  Printer,
 } from 'lucide-vue-next'
+import PrintReceipt from '@/components/print/PrintReceipt.vue'
+import { usePrint } from '@/composables/usePrint'
 
 const route = useRoute()
 const router = useRouter()
+
+// Print composable
+const { printElement } = usePrint()
 
 // Toast notifications
 const toastMessage = ref<string | null>(null)
@@ -55,6 +61,7 @@ const orderID = computed(() => Number(route.query.order))
 const order = ref<Order | null>(null)
 const menuItems = ref<MenuItem[]>([])
 const cashRegister = ref<CashRegister | null>(null)
+const payments = ref<any[]>([])
 const isLoading = ref(true)
 
 // Item selection state
@@ -294,15 +301,17 @@ function setExactAmount() {
 async function fetchData() {
   isLoading.value = true
   try {
-    const [orderData, register, items] = await Promise.all([
+    const [orderData, register, items, paymentsData] = await Promise.all([
       ordersApi.getOrder(orderID.value),
       cashRegisterApi.getOpenRegister(),
-      menuApi.getItems()
+      menuApi.getItems(),
+      paymentsApi.getPaymentsByOrder(orderID.value).catch(() => [])
     ])
 
     order.value = orderData
     cashRegister.value = register
     menuItems.value = items
+    payments.value = paymentsData
 
     // Select all UNPAID items by default with full remaining quantities
     const unpaid = orderData.items.filter((item: any) => !item.is_paid)
@@ -440,6 +449,22 @@ function formatDateTime(dateStr: string): string {
   })
 }
 
+// Print receipt
+function printReceipt() {
+  if (!order.value) return
+
+  const elementId = `receipt-${order.value.orderID}`
+  printElement(elementId, {
+    title: `Recibo - Pedido #${order.value.orderID}`,
+    onBeforePrint: () => {
+      console.log('Imprimindo recibo...')
+    },
+    onAfterPrint: () => {
+      showToast('Recibo impresso com sucesso')
+    },
+  })
+}
+
 onMounted(() => {
   if (!orderID.value) {
     showToast('ID do pedido não fornecido', 'error')
@@ -462,14 +487,24 @@ onMounted(() => {
     </div>
 
     <!-- Header -->
-    <div class="flex items-center gap-4">
-      <Button variant="ghost" size="icon" @click="cancelPayment" :disabled="paymentSuccess">
-        <ArrowLeft class="h-5 w-5" />
-      </Button>
-      <div>
-        <h1 class="text-3xl font-bold">Processar Pagamento</h1>
-        <p class="text-sm text-muted-foreground">Pedido #{{ orderID }}</p>
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-4">
+        <Button variant="ghost" size="icon" @click="cancelPayment" :disabled="paymentSuccess">
+          <ArrowLeft class="h-5 w-5" />
+        </Button>
+        <div>
+          <h1 class="text-3xl font-bold">Processar Pagamento</h1>
+          <p class="text-sm text-muted-foreground">Pedido #{{ orderID }}</p>
+        </div>
       </div>
+      <Button
+        v-if="order && !isLoading"
+        variant="outline"
+        @click="printReceipt"
+      >
+        <Printer class="mr-2 h-4 w-4" />
+        Imprimir Recibo
+      </Button>
     </div>
 
     <!-- Loading State -->
@@ -503,6 +538,15 @@ onMounted(() => {
                 <span class="font-bold text-green-600">€{{ changeDue.toFixed(2) }}</span>
               </div>
             </div>
+
+            <Button
+              variant="outline"
+              @click="printReceipt"
+              class="w-full"
+            >
+              <Printer class="mr-2 h-4 w-4" />
+              Imprimir Recibo
+            </Button>
 
             <p class="text-sm text-muted-foreground">
               A redirecionar para pagamentos em 3 segundos...
@@ -870,5 +914,8 @@ onMounted(() => {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <!-- Hidden Print Template -->
+    <PrintReceipt v-if="order" :order="order" :payments="payments" />
   </div>
 </template>
