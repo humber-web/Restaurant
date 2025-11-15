@@ -299,7 +299,7 @@ async function fetchData() {
       ordersApi.getOrders(),
       paymentsApi.getPayments(),
       tablesApi.getTables(),
-      menuApi.getMenuItems(),
+      menuApi.getItems(),
     ])
 
     orders.value = ordersData
