@@ -1,17 +1,8 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import {
-  FlexRender,
-  getCoreRowModel,
-  getPaginationRowModel,
-  getSortedRowModel,
-  useVueTable,
-  createColumnHelper,
-  type SortingState,
-  type ColumnDef,
-} from '@tanstack/vue-table'
+import { ref, onMounted } from 'vue'
 import { paymentsApi, type ListInvoicesParams } from '@/services/api/payments'
-import type { Payment } from '@/types/models'
+import type { Payment } from '@/types/models/payment'
+import InvoicesTableAdvanced from '@/components/invoices/InvoicesTableAdvanced.vue'
 import {
   Card,
   CardContent,
@@ -23,14 +14,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 import {
   Dialog,
   DialogContent,
@@ -48,15 +31,8 @@ import {
 import {
   FileText,
   Download,
-  Eye,
   Search,
   Filter,
-  FileSpreadsheet,
-  ChevronLeft,
-  ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
-  ArrowUpDown,
 } from 'lucide-vue-next'
 
 // Toast notifications
@@ -75,9 +51,6 @@ function showToast(message: string, variant: 'success' | 'error' = 'success') {
 const invoices = ref<Payment[]>([])
 const isLoading = ref(false)
 const totalCount = ref(0)
-const totalPages = ref(0)
-const currentPage = ref(1)
-const pageSize = ref(20)
 
 // Filters
 const searchQuery = ref('')
@@ -89,17 +62,13 @@ const endDate = ref('')
 const showDetailDialog = ref(false)
 const selectedInvoice = ref<Payment | null>(null)
 
-// Sorting
-const sorting = ref<SortingState>([])
-
 // Load invoices
 async function loadInvoices() {
   try {
     isLoading.value = true
 
     const params: ListInvoicesParams = {
-      page: currentPage.value,
-      page_size: pageSize.value,
+      page_size: 100, // Load a large batch for client-side pagination
     }
 
     if (searchQuery.value) params.search = searchQuery.value
@@ -111,7 +80,6 @@ async function loadInvoices() {
 
     invoices.value = response.results
     totalCount.value = response.count
-    totalPages.value = response.total_pages
   } catch (error: any) {
     showToast(error.response?.data?.detail || 'Erro ao carregar faturas', 'error')
   } finally {
@@ -121,7 +89,6 @@ async function loadInvoices() {
 
 // Filters actions
 function applyFilters() {
-  currentPage.value = 1
   loadInvoices()
 }
 
@@ -130,32 +97,6 @@ function clearFilters() {
   invoiceTypeFilter.value = ''
   startDate.value = ''
   endDate.value = ''
-  currentPage.value = 1
-  loadInvoices()
-}
-
-// Pagination
-function nextPage() {
-  if (currentPage.value < totalPages.value) {
-    currentPage.value++
-    loadInvoices()
-  }
-}
-
-function previousPage() {
-  if (currentPage.value > 1) {
-    currentPage.value--
-    loadInvoices()
-  }
-}
-
-function firstPage() {
-  currentPage.value = 1
-  loadInvoices()
-}
-
-function lastPage() {
-  currentPage.value = totalPages.value
   loadInvoices()
 }
 
@@ -207,75 +148,6 @@ function formatCurrency(value?: number | string) {
   if (!value) return 'CVE 0.00'
   return `CVE ${Number(value).toFixed(2)}`
 }
-
-// TanStack Table Columns
-const columnHelper = createColumnHelper<Payment>()
-
-const columns: ColumnDef<Payment, any>[] = [
-  columnHelper.accessor('invoice_no', {
-    header: 'Número',
-    cell: info => info.getValue() || 'N/A',
-  }),
-  columnHelper.accessor('invoice_date', {
-    header: 'Data',
-    cell: info => formatDate(info.getValue()),
-  }),
-  columnHelper.accessor('invoice_type', {
-    header: 'Tipo',
-    cell: info => {
-      const badge = getInvoiceTypeBadge(info.getValue())
-      return { badge }
-    },
-  }),
-  columnHelper.accessor('customer_name', {
-    header: 'Cliente',
-    cell: info => {
-      const row = info.row.original
-      return {
-        name: row.customer_name || 'Consumidor Final',
-        taxId: row.customer_tax_id || '999999999'
-      }
-    },
-  }),
-  columnHelper.accessor('amount', {
-    header: 'Total',
-    cell: info => formatCurrency(info.getValue()),
-  }),
-  columnHelper.accessor('iud', {
-    header: 'IUD',
-    cell: info => {
-      const iud = info.getValue()
-      return iud ? `${iud.slice(0, 20)}...` : 'N/A'
-    },
-  }),
-  columnHelper.display({
-    id: 'actions',
-    header: 'Ações',
-    cell: info => info.row.original,
-  }),
-]
-
-// TanStack Table
-const table = useVueTable({
-  get data() {
-    return invoices.value
-  },
-  columns,
-  getCoreRowModel: getCoreRowModel(),
-  getSortedRowModel: getSortedRowModel(),
-  state: {
-    get sorting() {
-      return sorting.value
-    },
-  },
-  onSortingChange: updaterOrValue => {
-    sorting.value =
-      typeof updaterOrValue === 'function'
-        ? updaterOrValue(sorting.value)
-        : updaterOrValue
-  },
-  manualPagination: true,
-})
 
 onMounted(() => {
   loadInvoices()
@@ -361,11 +233,11 @@ onMounted(() => {
         </div>
 
         <div class="flex gap-2 mt-4">
-          <Button @click="applyFilters">
+          <Button @click="applyFilters" :disabled="isLoading">
             <Search class="mr-2 h-4 w-4" />
             Aplicar Filtros
           </Button>
-          <Button variant="outline" @click="clearFilters">
+          <Button variant="outline" @click="clearFilters" :disabled="isLoading">
             Limpar
           </Button>
         </div>
@@ -394,123 +266,13 @@ onMounted(() => {
           </div>
         </div>
 
-        <div v-else class="rounded-md border">
-          <Table>
-            <TableHeader>
-              <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">
-                <TableHead v-for="header in headerGroup.headers" :key="header.id">
-                  <FlexRender
-                    v-if="!header.isPlaceholder"
-                    :render="header.column.columnDef.header"
-                    :props="header.getContext()"
-                  />
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <template v-if="table.getRowModel().rows?.length">
-                <TableRow
-                  v-for="row in table.getRowModel().rows"
-                  :key="row.id"
-                  :data-state="row.getIsSelected() && 'selected'"
-                >
-                  <TableCell v-for="cell in row.getVisibleCells()" :key="cell.id">
-                    <!-- Custom rendering for specific columns -->
-                    <template v-if="cell.column.id === 'invoice_no'">
-                      <span class="font-medium">
-                        <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                      </span>
-                    </template>
-
-                    <template v-else-if="cell.column.id === 'invoice_type'">
-                      <Badge :class="getInvoiceTypeBadge(row.original.invoice_type).class">
-                        {{ getInvoiceTypeBadge(row.original.invoice_type).label }}
-                      </Badge>
-                    </template>
-
-                    <template v-else-if="cell.column.id === 'customer_name'">
-                      <div class="text-sm">
-                        <div class="font-medium">{{ row.original.customer_name || 'Consumidor Final' }}</div>
-                        <div class="text-muted-foreground text-xs">NIF: {{ row.original.customer_tax_id || '999999999' }}</div>
-                      </div>
-                    </template>
-
-                    <template v-else-if="cell.column.id === 'amount'">
-                      <span class="font-semibold">
-                        <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                      </span>
-                    </template>
-
-                    <template v-else-if="cell.column.id === 'iud'">
-                      <span class="font-mono text-xs">
-                        <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                      </span>
-                    </template>
-
-                    <template v-else-if="cell.column.id === 'actions'">
-                      <div class="flex justify-end gap-2">
-                        <Button size="sm" variant="outline" @click="viewDetails(row.original)">
-                          <Eye class="h-3 w-3" />
-                        </Button>
-                        <Button size="sm" variant="outline" @click="downloadXML(row.original)">
-                          <Download class="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </template>
-
-                    <template v-else>
-                      <FlexRender :render="cell.column.columnDef.cell" :props="cell.getContext()" />
-                    </template>
-                  </TableCell>
-                </TableRow>
-              </template>
-            </TableBody>
-          </Table>
-        </div>
+        <InvoicesTableAdvanced
+          v-else
+          :invoices="invoices"
+          @view-details="viewDetails"
+          @download-xml="downloadXML"
+        />
       </CardContent>
-
-      <!-- Pagination -->
-      <div class="border-t p-4">
-        <div class="flex items-center justify-between">
-          <div class="text-sm text-muted-foreground">
-            Página {{ currentPage }} de {{ totalPages }} ({{ totalCount }} total)
-          </div>
-          <div class="flex items-center gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              @click="firstPage"
-              :disabled="currentPage === 1"
-            >
-              <ChevronsLeft class="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              @click="previousPage"
-              :disabled="currentPage === 1"
-            >
-              <ChevronLeft class="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              @click="nextPage"
-              :disabled="currentPage === totalPages"
-            >
-              <ChevronRight class="h-4 w-4" />
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              @click="lastPage"
-              :disabled="currentPage === totalPages"
-            >
-              <ChevronsRight class="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-      </div>
     </Card>
 
     <!-- Detail Dialog -->
