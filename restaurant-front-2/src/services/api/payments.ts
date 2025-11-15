@@ -29,6 +29,23 @@ export interface EFaturaResponse {
   }
 }
 
+export interface ListInvoicesParams {
+  invoice_type?: 'FT' | 'FR' | 'NC' | 'TV'
+  start_date?: string
+  end_date?: string
+  search?: string
+  page?: number
+  page_size?: number
+}
+
+export interface ListInvoicesResponse {
+  results: Payment[]
+  count: number
+  page: number
+  page_size: number
+  total_pages: number
+}
+
 export const paymentsApi = {
   async processPayment(data: ProcessPaymentPayload): Promise<ProcessPaymentResponse> {
     const response = await api.post('/payment/process/', data)
@@ -47,6 +64,22 @@ export const paymentsApi = {
 
   async getPaymentsByOrder(orderID: number): Promise<Payment[]> {
     const response = await api.get(`/payments/order/${orderID}/`)
+    return response.data
+  },
+
+  /**
+   * List all invoices (signed payments) with advanced filtering
+   */
+  async getInvoices(params?: ListInvoicesParams): Promise<ListInvoicesResponse> {
+    const queryParams = new URLSearchParams()
+    if (params?.invoice_type) queryParams.append('invoice_type', params.invoice_type)
+    if (params?.start_date) queryParams.append('start_date', params.start_date)
+    if (params?.end_date) queryParams.append('end_date', params.end_date)
+    if (params?.search) queryParams.append('search', params.search)
+    if (params?.page) queryParams.append('page', params.page.toString())
+    if (params?.page_size) queryParams.append('page_size', params.page_size.toString())
+
+    const response = await api.get(`/invoices/?${queryParams.toString()}`)
     return response.data
   },
 
