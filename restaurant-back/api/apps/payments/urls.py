@@ -10,6 +10,9 @@ from .views import (
     SignInvoiceView,
     ExportSAFTView,
     ValidateInvoiceHashView,
+    GenerateEFaturaView,
+    DownloadEFaturaXMLView,
+    SignAndSubmitEFaturaView,
 )
 
 urlpatterns = [
@@ -38,4 +41,15 @@ urlpatterns = [
 
     # Validate invoice hash
     path('payment/<int:pk>/validate-hash/', ValidateInvoiceHashView.as_view(), name='validate-hash'),
+
+    # ===== E-FATURA CV ENDPOINTS (Real-time Electronic Invoicing) =====
+
+    # Sign and submit e-Fatura (recommended - all in one)
+    path('payment/<int:pk>/efatura/submit/', SignAndSubmitEFaturaView.as_view(), name='efatura-sign-submit'),
+
+    # Generate e-Fatura XML (requires already signed invoice)
+    path('payment/<int:pk>/efatura/generate/', GenerateEFaturaView.as_view(), name='efatura-generate'),
+
+    # Download e-Fatura XML
+    path('payment/<int:pk>/efatura/download/', DownloadEFaturaXMLView.as_view(), name='efatura-download'),
 ]

@@ -1,0 +1,23 @@
+# e-Fatura XML files (simulation mode)
+efatura_xml/
+
+# SQLite database (if used)
+*.sqlite3
+db.sqlite3
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Django stuff
+*.log
+local_settings.py
+
+# Media files
+media/
+
+# Static files
+staticfiles/

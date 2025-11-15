@@ -19,6 +19,7 @@ from apps.orders.models import Order
 from apps.cash_register.models import CashRegister
 from .services.fiscal_service import FiscalService
 from .services.saft_export_service import SAFTExportService
+from .services.efatura_service import EFaturaService
 
 
 class ListPaymentsView(APIView):
@@ -427,4 +428,131 @@ class ValidateInvoiceHashView(APIView):
         except Exception as e:
             return Response({
                 'error': f'Failed to validate hash: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+# ===== E-FATURA CV VIEWS (Real-time Electronic Invoicing) =====
+
+class GenerateEFaturaView(APIView):
+    """
+    Generate e-Fatura XML for individual invoice.
+    Requires: payments module + authentication + manager permission
+    """
+    permission_classes = [IsAuthenticated, IsManager]
+
+    def post(self, request, pk):
+        """
+        Generate and submit e-Fatura XML for a payment/invoice.
+
+        SIMULATION MODE: Saves XML locally instead of sending to DNRE.
+        When DNRE credentials available, will submit to real API.
+        """
+        payment = get_object_or_404(Payment, pk=pk)
+
+        # Check if payment is signed
+        if not payment.is_signed:
+            return Response({
+                'error': 'Payment must be signed before generating e-Fatura. Use /sign/ endpoint first.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Generate and submit e-Fatura
+            service = EFaturaService(payment)
+            result = service.submit_to_dnre()
+
+            return Response({
+                'detail': 'e-Fatura XML generated successfully',
+                'mode': result['mode'],
+                'invoice_no': result['invoice_no'],
+                'iud': result['iud'],
+                'file_path': result.get('file_path'),
+                'message': result['message']
+            }, status=status.HTTP_200_OK)
+
+        except ValueError as e:
+            return Response({
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            return Response({
+                'error': f'Failed to generate e-Fatura: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DownloadEFaturaXMLView(APIView):
+    """
+    Download e-Fatura XML for an invoice.
+    Requires: payments module + authentication + manager permission
+    """
+    permission_classes = [IsAuthenticated, IsManager]
+
+    def get(self, request, pk):
+        """
+        Download e-Fatura XML for a specific payment.
+        """
+        payment = get_object_or_404(Payment, pk=pk)
+
+        if not payment.is_signed:
+            return Response({
+                'error': 'Payment must be signed first.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Generate XML
+            service = EFaturaService(payment)
+            xml_content = service.generate_xml()
+
+            # Prepare HTTP response with XML file
+            filename = f'efatura_{payment.invoice_type}_{payment.invoice_no.replace("/", "_")}_{payment.invoice_date}.xml'
+            response = HttpResponse(xml_content, content_type='application/xml')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+            return response
+
+        except Exception as e:
+            return Response({
+                'error': f'Failed to download e-Fatura XML: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class SignAndSubmitEFaturaView(APIView):
+    """
+    Sign invoice AND generate e-Fatura in one step (convenience endpoint).
+    Requires: payments module + authentication + manager permission
+    """
+    permission_classes = [IsAuthenticated, IsManager]
+
+    def post(self, request, pk):
+        """
+        1. Sign the invoice (if not already signed)
+        2. Generate and submit e-Fatura XML
+
+        This is the recommended endpoint for normal workflow.
+        """
+        payment = get_object_or_404(Payment, pk=pk)
+
+        try:
+            # Step 1: Sign if not signed
+            if not payment.is_signed:
+                payment = FiscalService.sign_invoice(payment)
+
+            # Step 2: Generate and submit e-Fatura
+            service = EFaturaService(payment)
+            result = service.submit_to_dnre()
+
+            return Response({
+                'detail': 'Invoice signed and e-Fatura generated successfully',
+                'payment': PaymentSerializer(payment).data,
+                'efatura': {
+                    'mode': result['mode'],
+                    'invoice_no': result['invoice_no'],
+                    'iud': result['iud'],
+                    'file_path': result.get('file_path'),
+                    'message': result['message']
+                }
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'error': f'Failed to sign and submit e-Fatura: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
