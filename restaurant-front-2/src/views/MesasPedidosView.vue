@@ -425,6 +425,14 @@ async function confirmTransfer() {
       target_order_id: targetOrder.orderID,
     })
 
+    // Update source table status to Available (all items transferred)
+    if (tableId.value) {
+      await tablesApi.updateTable(tableId.value, { status: 'AV' })
+    }
+
+    // Update target table status to Occupied
+    await tablesApi.updateTable(targetId, { status: 'OC' })
+
     if (!isMounted.value) return
 
     showTransferDialog.value = false
@@ -450,6 +458,11 @@ async function confirmDelete() {
 
   try {
     await ordersApi.deleteOrder(currentOrder.value.orderID)
+
+    // Update table status to Available after deleting order
+    if (tableId.value) {
+      await tablesApi.updateTable(tableId.value, { status: 'AV' })
+    }
 
     if (!isMounted.value) return
 
