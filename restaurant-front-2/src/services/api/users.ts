@@ -5,7 +5,12 @@ export interface CreateUserPayload {
   username: string
   email: string
   password: string
+  first_name?: string
+  last_name?: string
   group?: string
+  is_active?: boolean
+  is_staff?: boolean
+  is_superuser?: boolean
 }
 
 export const usersApi = {

@@ -63,7 +63,7 @@ async function handleSubmit(e: Event) {
 
   isSubmitting.value = true
   try {
-    await emit('submit', {
+    emit('submit', {
       menu_item: menuItem.value,
       quantity: quantity.value,
       reserved_quantity: reservedQuantity.value,
@@ -110,7 +110,7 @@ function handleOpenChange(open: boolean) {
         <div class="grid gap-4 py-4">
           <div class="grid gap-2">
             <Label for="menu-item">Item de Menu</Label>
-            <Select v-model="menuItem">
+            <Select v-model="menuItem" :disabled="mode === 'edit'">
               <SelectTrigger id="menu-item">
                 <SelectValue placeholder="Selecione um item de menu" />
               </SelectTrigger>
