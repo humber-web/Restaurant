@@ -34,6 +34,8 @@ import {
   DollarSign,
   Delete,
   Printer,
+  FileText,
+  Download,
 } from 'lucide-vue-next'
 import PrintReceipt from '@/components/print/PrintReceipt.vue'
 import { usePrint } from '@/composables/usePrint'
@@ -82,6 +84,14 @@ const useManualAmount = ref(false) // Toggle between item-based and manual amoun
 const isProcessingPayment = ref(false)
 const paymentSuccess = ref(false)
 const changeDue = ref<number>(0)
+const lastPaymentId = ref<number | null>(null)
+
+// e-Fatura state
+const showEFaturaDialog = ref(false)
+const isGeneratingEFatura = ref(false)
+const eFaturaGenerated = ref(false)
+const eFaturaResult = ref<any>(null)
+const customerTaxId = ref<string>('')
 
 // Cash register dialog
 const showCashRegisterDialog = ref(false)
@@ -420,14 +430,17 @@ async function processPayment() {
 
     const response = await paymentsApi.processPayment(payload)
 
+    // Store payment ID for e-Fatura generation
+    lastPaymentId.value = response.payment?.id || null
+
     // Show success screen
     paymentSuccess.value = true
     changeDue.value = parseFloat(response.change_due)
 
-    // Auto-redirect after 3 seconds
+    // Auto-redirect after 5 seconds (increased to allow e-Fatura generation)
     setTimeout(() => {
       router.push('/pagamentos')
-    }, 3000)
+    }, 5000)
   } catch (error: any) {
     const errorMessage = error.response?.data?.error || error.message || 'Erro ao processar pagamento'
     const hint = error.response?.data?.hint
@@ -463,6 +476,67 @@ function printReceipt() {
       showToast('Recibo impresso com sucesso')
     },
   })
+}
+
+// e-Fatura functions
+function openEFaturaDialog() {
+  customerTaxId.value = ''
+  eFaturaGenerated.value = false
+  eFaturaResult.value = null
+  showEFaturaDialog.value = true
+}
+
+async function generateEFatura() {
+  if (!lastPaymentId.value) {
+    showToast('ID do pagamento não encontrado', 'error')
+    return
+  }
+
+  try {
+    isGeneratingEFatura.value = true
+
+    // Pass customer tax ID if provided (otherwise backend will use "Consumidor Final")
+    const result = await paymentsApi.generateEFatura(
+      lastPaymentId.value,
+      customerTaxId.value || undefined
+    )
+
+    eFaturaGenerated.value = true
+    eFaturaResult.value = result
+
+    showToast('e-Fatura gerada com sucesso!', 'success')
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.detail || error.message || 'Erro ao gerar e-Fatura'
+    showToast(errorMessage, 'error')
+  } finally {
+    isGeneratingEFatura.value = false
+  }
+}
+
+async function downloadEFaturaXML() {
+  if (!lastPaymentId.value) {
+    showToast('ID do pagamento não encontrado', 'error')
+    return
+  }
+
+  try {
+    const blob = await paymentsApi.downloadEFaturaXML(lastPaymentId.value)
+
+    // Create download link
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `efatura_${lastPaymentId.value}.xml`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+
+    showToast('XML descarregado com sucesso!', 'success')
+  } catch (error: any) {
+    const errorMessage = error.response?.data?.detail || error.message || 'Erro ao descarregar XML'
+    showToast(errorMessage, 'error')
+  }
 }
 
 onMounted(() => {
@@ -548,8 +622,41 @@ onMounted(() => {
               Imprimir Recibo
             </Button>
 
+            <Button
+              v-if="!eFaturaGenerated"
+              variant="default"
+              @click="openEFaturaDialog"
+              class="w-full"
+            >
+              <FileText class="mr-2 h-4 w-4" />
+              Gerar e-Fatura
+            </Button>
+
+            <div v-else class="w-full p-3 bg-green-50 border border-green-200 rounded-lg">
+              <div class="flex items-center gap-2 text-sm text-green-900 mb-2">
+                <Check class="h-4 w-4" />
+                <span class="font-semibold">e-Fatura gerada com sucesso!</span>
+              </div>
+              <div class="text-xs text-green-800 space-y-1">
+                <div><strong>Fatura:</strong> {{ eFaturaResult?.payment?.invoice_no }}</div>
+                <div><strong>IUD:</strong> {{ eFaturaResult?.efatura?.iud }}</div>
+                <div v-if="eFaturaResult?.efatura?.mode === 'simulation'" class="text-orange-600">
+                  ⚠️ Modo simulação (XML guardado localmente)
+                </div>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                @click="downloadEFaturaXML"
+                class="w-full mt-2"
+              >
+                <Download class="mr-2 h-3 w-3" />
+                Descarregar XML
+              </Button>
+            </div>
+
             <p class="text-sm text-muted-foreground">
-              A redirecionar para pagamentos em 3 segundos...
+              A redirecionar para pagamentos em 5 segundos...
             </p>
           </div>
         </CardContent>
@@ -910,6 +1017,112 @@ onMounted(() => {
             <Wallet v-if="!isOpeningRegister" class="mr-2 h-4 w-4" />
             <span v-if="isOpeningRegister">Abrindo...</span>
             <span v-else>Abrir Caixa</span>
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+
+    <!-- e-Fatura Dialog -->
+    <Dialog v-model:open="showEFaturaDialog">
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Gerar e-Fatura Eletrónica</DialogTitle>
+          <DialogDescription>
+            A e-Fatura será enviada à DNRE (Direção Nacional de Receitas do Estado) conforme legislação de Cabo Verde.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div v-if="!eFaturaGenerated" class="space-y-4 py-4">
+          <div class="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <div class="flex items-start gap-2">
+              <FileText class="h-5 w-5 text-blue-600 mt-0.5" />
+              <div class="text-sm text-blue-900">
+                <p class="font-semibold mb-1">Informações da Fatura</p>
+                <ul class="space-y-1 text-xs">
+                  <li><strong>Pedido:</strong> #{{ orderID }}</li>
+                  <li><strong>Total:</strong> CVE{{ parseFloat(paymentAmount).toFixed(2) }}</li>
+                  <li><strong>Método:</strong> {{ paymentMethod }}</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <Label>NIF do Cliente (opcional)</Label>
+            <Input
+              v-model="customerTaxId"
+              type="text"
+              placeholder="Ex: 123456789"
+              maxlength="20"
+            />
+            <p class="text-xs text-muted-foreground">
+              Deixe em branco para "Consumidor Final" (999999999)
+            </p>
+          </div>
+
+          <div class="p-3 bg-orange-50 border border-orange-200 rounded-lg">
+            <p class="text-xs text-orange-900">
+              ⚠️ <strong>Modo Simulação:</strong> A e-Fatura será guardada localmente como XML. Quando as credenciais DNRE estiverem disponíveis, será enviada automaticamente.
+            </p>
+          </div>
+        </div>
+
+        <div v-else class="py-4">
+          <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div class="flex items-center gap-2 text-green-900 mb-3">
+              <Check class="h-5 w-5" />
+              <span class="font-semibold">e-Fatura gerada com sucesso!</span>
+            </div>
+            <div class="text-sm text-green-800 space-y-2">
+              <div class="grid grid-cols-2 gap-2">
+                <span class="text-muted-foreground">Fatura Nº:</span>
+                <span class="font-semibold">{{ eFaturaResult?.payment?.invoice_no }}</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <span class="text-muted-foreground">IUD:</span>
+                <span class="font-mono text-xs break-all">{{ eFaturaResult?.efatura?.iud }}</span>
+              </div>
+              <div class="grid grid-cols-2 gap-2">
+                <span class="text-muted-foreground">Modo:</span>
+                <span class="uppercase text-xs">
+                  {{ eFaturaResult?.efatura?.mode === 'simulation' ? '🟡 Simulação' : '🟢 Produção' }}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            v-if="!eFaturaGenerated"
+            variant="outline"
+            @click="showEFaturaDialog = false"
+            :disabled="isGeneratingEFatura"
+          >
+            Cancelar
+          </Button>
+          <Button
+            v-if="!eFaturaGenerated"
+            @click="generateEFatura"
+            :disabled="isGeneratingEFatura"
+          >
+            <FileText v-if="!isGeneratingEFatura" class="mr-2 h-4 w-4" />
+            <span v-if="isGeneratingEFatura">Gerando...</span>
+            <span v-else>Gerar e-Fatura</span>
+          </Button>
+          <Button
+            v-else
+            variant="outline"
+            @click="downloadEFaturaXML"
+          >
+            <Download class="mr-2 h-4 w-4" />
+            Descarregar XML
+          </Button>
+          <Button
+            v-if="eFaturaGenerated"
+            @click="showEFaturaDialog = false"
+          >
+            Fechar
           </Button>
         </DialogFooter>
       </DialogContent>
