@@ -214,7 +214,7 @@ const alerts = computed(() => {
   // Old orders (waiting > 30 min)
   const now = new Date()
   const oldOrders = orders.value.filter(o => {
-    if (o.status === 'DELIVERED' || o.status === 'CANCELLED') return false
+    if (o.status === 'DELIVERED' || o.status === 'CANCELLED' || o.status === 'READY') return false
     const orderDate = new Date(o.created_at)
     const diffMins = (now.getTime() - orderDate.getTime()) / 60000
     return diffMins > 30
