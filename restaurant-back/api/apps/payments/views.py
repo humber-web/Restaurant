@@ -591,8 +591,14 @@ class ListInvoicesView(APIView):
         - page: Page number (default: 1)
         - page_size: Items per page (default: 50, max: 100)
         """
-        # Base queryset - only signed payments (invoices)
-        invoices = Payment.objects.filter(is_signed=True).select_related('order').order_by('-invoice_date', '-paymentID')
+        # Base queryset - only signed payments with complete invoice data
+        # Filter by is_signed=True AND invoice_no is not null/empty to ensure data integrity
+        invoices = Payment.objects.filter(
+            is_signed=True,
+            invoice_no__isnull=False
+        ).exclude(
+            invoice_no=''
+        ).select_related('order').order_by('-invoice_date', '-paymentID')
 
         # Filter by invoice type
         invoice_type = request.query_params.get('invoice_type')
