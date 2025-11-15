@@ -431,7 +431,7 @@ async function processPayment() {
     const response = await paymentsApi.processPayment(payload)
 
     // Store payment ID for e-Fatura generation
-    lastPaymentId.value = response.payment?.id || null
+    lastPaymentId.value = response.payment?.paymentID || null
 
     // Show success screen
     paymentSuccess.value = true
