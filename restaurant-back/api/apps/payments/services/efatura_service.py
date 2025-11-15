@@ -242,19 +242,19 @@ class EFaturaService:
             # Price (unit price)
             SubElement(line, 'Price').text = f"{float(item.price):.2f}"
 
-            # Price Extension (quantity * price)
-            price_extension = float(item.price * item.quantity)
-            SubElement(line, 'PriceExtension').text = f"{price_extension:.2f}"
+            # Price Extension (quantity * price) - Keep as Decimal for calculations
+            price_extension = item.price * item.quantity
+            SubElement(line, 'PriceExtension').text = f"{float(price_extension):.2f}"
 
             # Net Total (same as price extension for simple case)
-            SubElement(line, 'NetTotal').text = f"{price_extension:.2f}"
+            SubElement(line, 'NetTotal').text = f"{float(price_extension):.2f}"
 
             # Tax (IVA 15%)
             tax = SubElement(line, 'Tax')
             tax.set('TaxTypeCode', 'IVA')
             SubElement(tax, 'TaxPercentage').text = '15.00'
 
-            # Calculate tax amount
+            # Calculate tax amount (keep as Decimal)
             tax_amount = price_extension * Decimal('0.15')
             SubElement(tax, 'TaxTotal').text = f"{float(tax_amount):.2f}"
 
