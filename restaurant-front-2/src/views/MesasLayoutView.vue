@@ -213,7 +213,7 @@ onMounted(async () => {
     </div>
 
     <!-- Legend Card -->
-    <Card v-if="showLegend" class="border-blue-200 bg-blue-50">
+    <Card v-if="showLegend" class="border-blue-200">
       <CardHeader class="pb-3">
         <CardTitle class="text-sm flex items-center gap-2">
           <Info class="h-4 w-4" />
@@ -238,7 +238,7 @@ onMounted(async () => {
 
     <!-- Floor Plan -->
     <Card class="flex-1 overflow-hidden">
-      <CardContent class="h-full p-0 relative bg-gray-50">
+      <CardContent class="h-full p-0 relative">
         <div
           v-if="!isLoading"
           class="relative w-full h-full overflow-auto"
@@ -281,7 +281,7 @@ onMounted(async () => {
     <div
       v-if="toastMessage"
       :class="[
-        'fixed bottom-4 right-4 z-50 rounded-md px-6 py-4 text-white shadow-lg transition-all',
+        'fixed bottom-4 right-4 z-50 rounded-md px-6 py-4  shadow-lg transition-all',
         toastVariant === 'success' ? 'bg-green-600' : 'bg-red-600',
       ]"
     >

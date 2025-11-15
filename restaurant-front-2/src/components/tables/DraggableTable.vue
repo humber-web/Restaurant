@@ -129,7 +129,7 @@ currentY.value = props.y
 
 <template>
   <div
-    class="absolute rounded-lg border-4 shadow-lg transition-all hover:shadow-xl bg-white"
+    class="absolute rounded-lg border-4 shadow-lg transition-all hover:shadow-xl"
     :class="[
       borderColor,
       isDraggable ? 'cursor-move' : 'cursor-pointer',
