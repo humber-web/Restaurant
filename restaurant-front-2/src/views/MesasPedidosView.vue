@@ -608,16 +608,16 @@ onUnmounted(() => {
             <div class="space-y-2">
               <div class="flex justify-between text-sm">
                 <span class="text-muted-foreground">Subtotal:</span>
-                <span>€{{ orderTotals.totalAmount.toFixed(2) }}</span>
+                <span>CVE{{ orderTotals.totalAmount.toFixed(2) }}</span>
               </div>
               <div class="flex justify-between text-sm">
                 <span class="text-muted-foreground">IVA (15%):</span>
-                <span>€{{ orderTotals.totalIva.toFixed(2) }}</span>
+                <span>CVE{{ orderTotals.totalIva.toFixed(2) }}</span>
               </div>
               <Separator />
               <div class="flex justify-between text-lg font-bold">
                 <span>Total:</span>
-                <span>€{{ orderTotals.grandTotal.toFixed(2) }}</span>
+                <span>CVE{{ orderTotals.grandTotal.toFixed(2) }}</span>
               </div>
               <div class="mt-2 space-y-1">
                 <Badge :variant="paymentStatusConfig[currentOrder.paymentStatus]?.variant">
@@ -678,7 +678,7 @@ onUnmounted(() => {
               <div class="flex items-start justify-between mb-2">
                 <div class="flex-1">
                   <h3 class="font-semibold">{{ getItemName(item.menu_item) }}</h3>
-                  <p class="text-sm text-muted-foreground">€{{ Number(item.price).toFixed(2) }}/un</p>
+                  <p class="text-sm text-muted-foreground">CVE{{ Number(item.price).toFixed(2) }}/un</p>
                 </div>
                 <div class="flex items-center gap-2">
                   <Badge variant="outline">
@@ -717,7 +717,7 @@ onUnmounted(() => {
 
                   <div class="text-right min-w-[80px]">
                     <p class="text-xs text-muted-foreground">Subtotal</p>
-                    <p class="font-semibold">€{{ (Number(item.price) * item.quantity).toFixed(2) }}</p>
+                    <p class="font-semibold">CVE{{ (Number(item.price) * item.quantity).toFixed(2) }}</p>
                   </div>
                 </div>
               </div>
@@ -729,15 +729,15 @@ onUnmounted(() => {
         <div v-if="currentOrder" class="border-t pt-4 mt-4 bg-background">
           <div class="flex justify-between text-sm mb-1">
             <span>Subtotal:</span>
-            <span>€{{ orderTotals.totalAmount.toFixed(2) }}</span>
+            <span>CVE{{ orderTotals.totalAmount.toFixed(2) }}</span>
           </div>
           <div class="flex justify-between text-sm mb-1">
             <span>IVA (15%):</span>
-            <span>€{{ orderTotals.totalIva.toFixed(2) }}</span>
+            <span>CVE{{ orderTotals.totalIva.toFixed(2) }}</span>
           </div>
           <div class="flex justify-between font-bold text-lg">
             <span>Total:</span>
-            <span>€{{ orderTotals.grandTotal.toFixed(2) }}</span>
+            <span>CVE{{ orderTotals.grandTotal.toFixed(2) }}</span>
           </div>
         </div>
       </div>
@@ -784,7 +784,7 @@ onUnmounted(() => {
               <div class="flex items-center justify-between">
                 <div class="flex-1">
                   <h4 class="font-medium text-sm">{{ item.name }}</h4>
-                  <p class="text-sm font-semibold text-primary">€{{ Number(item.price).toFixed(2) }}</p>
+                  <p class="text-sm font-semibold text-primary">CVE{{ Number(item.price).toFixed(2) }}</p>
                 </div>
                 <Button
                   size="icon"

@@ -305,8 +305,32 @@ class UpdateOrderItemStatusView(APIView):
         order_item.status = new_status
         order_item.save()
 
-        # Return the full order with updated items
+        # Auto-update order status based on all item statuses
         order = order_item.order
+        all_items = order.items.all()
+
+        if all_items.exists():
+            item_statuses = set(all_items.values_list('status', flat=True))
+
+            # If all items are delivered (status '4'), mark order as DELIVERED
+            if item_statuses == {'4'}:
+                order.status = 'DELIVERED'
+            # If all items are ready (status '3'), mark order as READY
+            elif item_statuses == {'3'}:
+                order.status = 'READY'
+            # If any item is preparing (status '2'), mark order as PREPARING
+            elif '2' in item_statuses:
+                order.status = 'PREPARING'
+            # If all items are pending (status '1'), mark order as PENDING
+            elif item_statuses == {'1'}:
+                order.status = 'PENDING'
+            # Mixed statuses with no '2' - set to PREPARING to indicate work in progress
+            else:
+                order.status = 'PREPARING'
+
+            order.save()
+
+        # Return the full order with updated items
         serializer = OrderSerializer(order)
 
         return Response({

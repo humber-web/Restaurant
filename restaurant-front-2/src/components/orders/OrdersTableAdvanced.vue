@@ -145,7 +145,7 @@ const columns: ColumnDef<Order>[] = [
     header: createSortableHeader('Total', 'grandTotal'),
     cell: ({ row }) => {
       const amount = parseFloat(row.getValue('grandTotal'))
-      return h('div', { class: 'font-semibold' }, `€${amount.toFixed(2)}`)
+      return h('div', { class: 'font-semibold' }, `CVE${amount.toFixed(2)}`)
     },
     enableHiding: true,
     meta: { label: 'Total' },

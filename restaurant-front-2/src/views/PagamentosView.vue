@@ -254,7 +254,7 @@ onUnmounted(() => {
             <div class="flex items-center justify-between">
               <span class="text-sm font-medium">Total a Pagar:</span>
               <span class="text-2xl font-bold text-primary">
-                €{{ Number(order.grandTotal || 0).toFixed(2) }}
+                CVE{{ Number(order.grandTotal || 0).toFixed(2) }}
               </span>
             </div>
           </div>

@@ -248,8 +248,9 @@ const alerts = computed(() => {
 })
 
 // Format currency
-function formatCurrency(value: number): string {
-  return `€${value.toFixed(2)}`
+function formatCurrency(value: number | string): string {
+  const numValue = typeof value === 'string' ? parseFloat(value) : value
+  return `${numValue.toFixed(2)} CVE`
 }
 
 // Format time ago

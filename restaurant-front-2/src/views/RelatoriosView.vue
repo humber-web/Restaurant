@@ -410,7 +410,7 @@ onMounted(() => {
               <DollarSign class="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div class="text-2xl font-bold text-green-600">€{{ statistics.totalRevenue.toFixed(2) }}</div>
+              <div class="text-2xl font-bold text-green-600">CVE{{ statistics.totalRevenue.toFixed(2) }}</div>
               <p class="text-xs text-muted-foreground mt-1">
                 {{ statistics.totalOrders }} pedidos pagos
               </p>
@@ -436,7 +436,7 @@ onMounted(() => {
               <ShoppingBag class="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div class="text-2xl font-bold">€{{ statistics.averageOrderValue.toFixed(2) }}</div>
+              <div class="text-2xl font-bold">CVE{{ statistics.averageOrderValue.toFixed(2) }}</div>
               <p class="text-xs text-muted-foreground mt-1">
                 Ticket médio
               </p>
@@ -449,7 +449,7 @@ onMounted(() => {
               <TrendingUp class="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div class="text-2xl font-bold">€{{ statistics.dailyAverage.toFixed(2) }}</div>
+              <div class="text-2xl font-bold">CVE{{ statistics.dailyAverage.toFixed(2) }}</div>
               <p class="text-xs text-muted-foreground mt-1">
                 Receita por dia
               </p>
@@ -469,21 +469,21 @@ onMounted(() => {
                 <Wallet class="h-8 w-8 text-green-600" />
                 <div>
                   <p class="text-sm text-muted-foreground">Dinheiro</p>
-                  <p class="text-2xl font-bold">€{{ statistics.paymentMethods.cash.toFixed(2) }}</p>
+                  <p class="text-2xl font-bold">CVE{{ statistics.paymentMethods.cash.toFixed(2) }}</p>
                 </div>
               </div>
               <div class="flex items-center gap-4 p-4 border rounded-lg">
                 <CreditCard class="h-8 w-8 text-blue-600" />
                 <div>
                   <p class="text-sm text-muted-foreground">Cartão</p>
-                  <p class="text-2xl font-bold">€{{ statistics.paymentMethods.card.toFixed(2) }}</p>
+                  <p class="text-2xl font-bold">CVE{{ statistics.paymentMethods.card.toFixed(2) }}</p>
                 </div>
               </div>
               <div class="flex items-center gap-4 p-4 border rounded-lg">
                 <Globe class="h-8 w-8 text-purple-600" />
                 <div>
                   <p class="text-sm text-muted-foreground">Online</p>
-                  <p class="text-2xl font-bold">€{{ statistics.paymentMethods.online.toFixed(2) }}</p>
+                  <p class="text-2xl font-bold">CVE{{ statistics.paymentMethods.online.toFixed(2) }}</p>
                 </div>
               </div>
             </div>
@@ -513,7 +513,7 @@ onMounted(() => {
                   </div>
                   <div>
                     <p class="text-muted-foreground">Receita</p>
-                    <p class="font-bold text-green-600">€{{ statistics.bestSeller.revenue.toFixed(2) }}</p>
+                    <p class="font-bold text-green-600">CVE{{ statistics.bestSeller.revenue.toFixed(2) }}</p>
                   </div>
                   <div>
                     <p class="text-muted-foreground">Pedidos</p>

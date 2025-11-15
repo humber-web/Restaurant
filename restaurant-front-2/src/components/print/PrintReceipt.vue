@@ -83,10 +83,10 @@ function getTableDisplay(): string {
         <div v-for="(item, index) in order.items" :key="index" class="print-item">
           <div class="print-item-row">
             <span>{{ item.quantity }}x {{ item.name || `Item #${item.menu_item}` }}</span>
-            <span>{{ (Number(item.price) * item.quantity).toFixed(2) }}€</span>
+            <span>{{ (Number(item.price) * item.quantity).toFixed(2) }}CVE</span>
           </div>
           <div class="print-item-subrow">
-            <span>{{ Number(item.price).toFixed(2) }}€ cada</span>
+            <span>{{ Number(item.price).toFixed(2) }}CVE cada</span>
           </div>
         </div>
       </div>
@@ -95,16 +95,16 @@ function getTableDisplay(): string {
     <div class="print-section">
       <div class="print-row">
         <span>Subtotal:</span>
-        <span>{{ Number(order.totalAmount).toFixed(2) }}€</span>
+        <span>{{ Number(order.totalAmount).toFixed(2) }}CVE</span>
       </div>
       <div class="print-row">
         <span>IVA (15%):</span>
-        <span>{{ Number(order.totalIva).toFixed(2) }}€</span>
+        <span>{{ Number(order.totalIva).toFixed(2) }}CVE</span>
       </div>
       <div class="print-total">
         <div class="print-row">
           <span>TOTAL:</span>
-          <span>{{ Number(order.grandTotal).toFixed(2) }}€</span>
+          <span>{{ Number(order.grandTotal).toFixed(2) }}CVE</span>
         </div>
       </div>
     </div>
@@ -113,16 +113,16 @@ function getTableDisplay(): string {
       <p style="font-weight: bold; margin-bottom: 8px;">PAGAMENTOS</p>
       <div v-for="payment in payments" :key="payment.paymentID" class="print-row">
         <span>{{ paymentMethodNames[payment.payment_method] }}</span>
-        <span>{{ Number(payment.amount).toFixed(2) }}€</span>
+        <span>{{ Number(payment.amount).toFixed(2) }}CVE</span>
       </div>
       <div class="print-total" style="margin-top: 8px;">
         <div class="print-row">
           <span>Total Pago:</span>
-          <span>{{ totalPaid.toFixed(2) }}€</span>
+          <span>{{ totalPaid.toFixed(2) }}CVE</span>
         </div>
         <div v-if="!isPaid" class="print-row" style="font-size: 11px;">
           <span>Restante:</span>
-          <span>{{ remainingAmount.toFixed(2) }}€</span>
+          <span>{{ remainingAmount.toFixed(2) }}CVE</span>
         </div>
       </div>
     </div>
