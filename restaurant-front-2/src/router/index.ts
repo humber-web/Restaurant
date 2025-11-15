@@ -91,6 +91,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/AuditoriaView.vue'),
         meta: { requiresManager: true },
       },
+      {
+        path: 'contabilidade/faturas',
+        name: 'contabilidade-faturas',
+        component: () => import('@/views/FaturasView.vue'),
+        meta: { requiresManager: true },
+      },
       // Configurações (Settings) - All require manager
       {
         path: 'configuracoes/produtos',

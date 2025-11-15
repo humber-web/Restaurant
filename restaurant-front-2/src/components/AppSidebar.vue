@@ -96,6 +96,10 @@ const data = {
           title: "Auditoria",
           url: "/contabilidade/auditoria",
         },
+        {
+          title: "Gestão de Faturas",
+          url: "/contabilidade/faturas",
+        },
       ],
     },
     {
