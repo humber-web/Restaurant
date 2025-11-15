@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ordersApi, cashRegisterApi, menuApi, type Order, type MenuItem } from '@/services/api'
+import { ordersApi, cashRegisterApi, menuApi } from '@/services/api'
 import { paymentsApi, type ProcessPaymentPayload } from '@/services/api/payments'
-import type { CashRegister } from '@/services/api/cashRegister'
-import type { OrderItem } from '@/types/models'
+// import type { CashRegister } from '@/services/api/cashRegister'
+import type { OrderItem, CashRegister, Order, MenuItem  } from '@/types/models'
 import {
   Card,
   CardContent,

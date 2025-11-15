@@ -32,4 +32,9 @@ export const paymentsApi = {
     const response = await api.get(`/payment/${id}/`)
     return response.data
   },
+
+  async getPaymentsByOrder(orderID: number): Promise<Payment[]> {
+    const response = await api.get(`/payments/order/${orderID}/`)
+    return response.data
+  }
 }
