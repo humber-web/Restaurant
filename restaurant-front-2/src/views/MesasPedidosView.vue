@@ -52,6 +52,7 @@ import {
   ArrowLeft,
   Printer,
   Zap,
+  Check,
 } from 'lucide-vue-next'
 import PrintProforma from '@/components/print/PrintProforma.vue'
 import { usePrint } from '@/composables/usePrint'
@@ -89,6 +90,7 @@ const isMounted = ref(true)
 const selectedCategory = ref<number | null>(null)
 const menuSearchQuery = ref('')
 const cartItems = ref<Map<number, number>>(new Map()) // menuItemId -> quantity
+const recentlyAddedItem = ref<number | null>(null)
 
 // Dialogs
 const showTransferDialog = ref(false)
@@ -397,6 +399,12 @@ async function deleteItem(item: OrderItem) {
 function addToCart(menuItem: MenuItem) {
   const current = cartItems.value.get(menuItem.itemID) || 0
   cartItems.value.set(menuItem.itemID, current + 1)
+
+  // Show visual feedback
+  recentlyAddedItem.value = menuItem.itemID
+  setTimeout(() => {
+    recentlyAddedItem.value = null
+  }, 600)
 }
 
 // Transfer dialog
@@ -883,26 +891,43 @@ onUnmounted(() => {
           <Card
             v-for="item in filteredMenuItems"
             :key="item.itemID"
-            class="hover:bg-accent cursor-pointer transition-colors"
+            class="hover:bg-accent cursor-pointer transition-all duration-200"
+            :class="{
+              'opacity-50 cursor-not-allowed': !item.availability,
+              'ring-2 ring-primary scale-[1.02]': recentlyAddedItem === item.itemID
+            }"
+            @click="item.availability && addToCart(item)"
           >
             <CardContent class="p-3">
               <div class="flex items-center justify-between">
                 <div class="flex-1">
                   <h4 class="font-medium text-sm">{{ item.name }}</h4>
                   <p class="text-sm font-semibold text-primary">CVE{{ Number(item.price).toFixed(2) }}</p>
+                  <p v-if="cartItems.get(item.itemID)" class="text-xs text-muted-foreground mt-1">
+                    {{ cartItems.get(item.itemID) }} no carrinho
+                  </p>
                 </div>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  @click="addToCart(item)"
-                  :disabled="!item.availability"
-                >
-                  <Plus class="h-4 w-4" />
-                </Button>
+                <div class="flex items-center gap-2">
+                  <Badge v-if="!item.availability" variant="destructive" class="text-xs">
+                    Indisponível
+                  </Badge>
+                  <div
+                    class="h-8 w-8 rounded-full flex items-center justify-center transition-all"
+                    :class="recentlyAddedItem === item.itemID
+                      ? 'bg-primary scale-110'
+                      : 'bg-primary/10'"
+                  >
+                    <Check
+                      v-if="recentlyAddedItem === item.itemID"
+                      class="h-4 w-4 text-primary-foreground"
+                    />
+                    <Plus
+                      v-else
+                      class="h-4 w-4 text-primary"
+                    />
+                  </div>
+                </div>
               </div>
-              <Badge v-if="!item.availability" variant="destructive" class="mt-1 text-xs">
-                Indisponível
-              </Badge>
             </CardContent>
           </Card>
         </div>
@@ -916,7 +941,7 @@ onUnmounted(() => {
             </div>
             <Tooltip>
               <TooltipTrigger as-child>
-                <Button class="w-full" @click="addCartToOrder">
+                <Button class="w-full" size="lg" @click="addCartToOrder">
                   <Plus class="mr-2 h-4 w-4" />
                   Adicionar ao Pedido
                 </Button>
@@ -927,93 +952,6 @@ onUnmounted(() => {
             </Tooltip>
           </div>
           <p v-else class="text-sm text-muted-foreground text-center py-2">Carrinho vazio</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Floating Quick Action Bar (Bottom of Screen) -->
-    <div class="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-background via-background to-transparent pb-4 pt-8 pointer-events-none">
-      <div class="container mx-auto px-6 pointer-events-auto">
-        <div class="bg-primary/95 backdrop-blur-sm rounded-full shadow-2xl border border-primary/20 px-6 py-3 flex items-center justify-between max-w-3xl mx-auto">
-          <!-- Quick Info -->
-          <div class="flex items-center gap-4 text-primary-foreground">
-            <div class="flex items-center gap-2">
-              <Zap class="h-5 w-5 text-yellow-300" />
-              <span class="font-semibold hidden sm:inline">Ações Rápidas</span>
-            </div>
-            <div v-if="currentOrder" class="text-sm opacity-90 hidden md:inline">
-              Mesa {{ tableId }} • Pedido #{{ currentOrder.orderID }}
-            </div>
-          </div>
-
-          <!-- Quick Action Buttons -->
-          <div class="flex items-center gap-2">
-            <!-- Add to Cart Quick Button -->
-            <Tooltip v-if="cartTotalItems > 0">
-              <TooltipTrigger as-child>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  @click="addCartToOrder"
-                  class="relative"
-                >
-                  <Plus class="h-4 w-4 sm:mr-2" />
-                  <span class="hidden sm:inline">Adicionar</span>
-                  <Badge
-                    variant="destructive"
-                    class="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs"
-                  >
-                    {{ cartTotalItems }}
-                  </Badge>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Adicionar {{ cartTotalItems }} item(ns) ao pedido (A)</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <!-- Payment Quick Button -->
-            <Tooltip v-if="currentOrder">
-              <TooltipTrigger as-child>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  @click="openPaymentDialog"
-                >
-                  <CreditCard class="h-4 w-4 sm:mr-2" />
-                  <span class="hidden sm:inline">Pagar</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Processar Pagamento (P)</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <!-- Print Quick Button -->
-            <Tooltip v-if="currentOrder">
-              <TooltipTrigger as-child>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  @click="printProforma"
-                  class="hidden lg:inline-flex"
-                >
-                  <Printer class="h-4 w-4 sm:mr-2" />
-                  <span class="hidden sm:inline">Imprimir</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Imprimir Proforma (I)</p>
-              </TooltipContent>
-            </Tooltip>
-
-            <!-- Total Display -->
-            <div v-if="currentOrder" class="hidden md:flex items-center bg-primary-foreground/10 rounded-full px-4 py-1.5 ml-2">
-              <span class="text-sm text-primary-foreground font-bold">
-                CVE{{ orderTotals.grandTotal.toFixed(2) }}
-              </span>
-            </div>
-          </div>
         </div>
       </div>
     </div>
