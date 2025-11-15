@@ -6,7 +6,7 @@ from .models import Profile
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'password', 'groups']
+        fields = ['id', 'username', 'email', 'password', 'groups', 'is_staff', 'is_superuser', 'first_name', 'last_name', 'is_active']
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
