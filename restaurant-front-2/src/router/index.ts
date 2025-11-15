@@ -30,6 +30,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/MesasView.vue'),
       },
       {
+        path: 'mesas/layout',
+        name: 'mesas-layout',
+        component: () => import('@/views/MesasLayoutView.vue'),
+      },
+      {
         path: 'mesas/pedidos',
         name: 'mesas-pedidos',
         component: () => import('@/views/MesasPedidosView.vue'),
