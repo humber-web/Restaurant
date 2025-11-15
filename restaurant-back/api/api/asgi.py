@@ -12,7 +12,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from channels.auth import AuthMiddlewareStack
 from .routing import websocket_urlpatterns
 from django.core.asgi import get_asgi_application
-from core.tasks import listen_to_db
+from apps.common.tasks import listen_to_db
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'api.settings')
 

@@ -9,14 +9,24 @@ from apps.common.feature_flags import FeatureFlags, Modules
 class OrderItemSerializer(serializers.ModelSerializer):
     menu_item = serializers.PrimaryKeyRelatedField(queryset=MenuItem.objects.all())
     name = serializers.SerializerMethodField()
+    is_paid = serializers.SerializerMethodField()
+    remaining_quantity = serializers.SerializerMethodField()
 
     class Meta:
         model = OrderItem
-        fields = ['menu_item', 'name', 'quantity', 'price', 'status', 'to_be_prepared_in']
-        read_only_fields = ['price', 'name', 'to_be_prepared_in']
+        fields = ['id', 'menu_item', 'name', 'quantity', 'price', 'status', 'to_be_prepared_in', 'is_paid', 'remaining_quantity']
+        read_only_fields = ['id', 'price', 'name', 'to_be_prepared_in', 'is_paid', 'remaining_quantity']
 
     def get_name(self, obj):
         return obj.menu_item.name
+
+    def get_is_paid(self, obj):
+        """Check if this item has been fully paid for."""
+        return obj.is_paid()
+
+    def get_remaining_quantity(self, obj):
+        """Get the remaining unpaid quantity for this item."""
+        return obj.remaining_quantity()
 
 
 class OrderDetailsSerializer(serializers.ModelSerializer):
@@ -30,12 +40,24 @@ class OrderDetailsSerializer(serializers.ModelSerializer):
 class OrderSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
     details = OrderDetailsSerializer()
+    total_paid = serializers.SerializerMethodField()
+    remaining_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
-        fields = ['orderID', 'customer', 'items', 'status', 'totalAmount', 'totalIva', 'grandTotal', 
-                  'paymentStatus', 'orderType', 'created_at', 'updated_at', 'last_updated_by', 'details']
-        read_only_fields = ['totalAmount', 'totalIva', 'created_at', 'updated_at', 'last_updated_by', 'grandTotal']
+        fields = ['orderID', 'customer', 'items', 'status', 'totalAmount', 'totalIva', 'grandTotal',
+                  'paymentStatus', 'orderType', 'created_at', 'updated_at', 'last_updated_by', 'details',
+                  'total_paid', 'remaining_amount']
+        read_only_fields = ['totalAmount', 'totalIva', 'created_at', 'updated_at', 'last_updated_by', 'grandTotal',
+                           'total_paid', 'remaining_amount']
+
+    def get_total_paid(self, obj):
+        """Get the total amount already paid for this order."""
+        return str(obj.total_paid())
+
+    def get_remaining_amount(self, obj):
+        """Get the remaining unpaid amount for this order."""
+        return str(obj.remaining_amount())
 
     def validate(self, data):
         # Check if the table already has a pending order

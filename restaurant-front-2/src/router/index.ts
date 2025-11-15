@@ -30,6 +30,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/MesasView.vue'),
       },
       {
+        path: 'mesas/layout',
+        name: 'mesas-layout',
+        component: () => import('@/views/MesasLayoutView.vue'),
+      },
+      {
         path: 'mesas/pedidos',
         name: 'mesas-pedidos',
         component: () => import('@/views/MesasPedidosView.vue'),
@@ -40,11 +45,27 @@ const routes: RouteRecordRaw[] = [
         name: 'pedidos',
         component: () => import('@/views/PedidosView.vue'),
       },
+      {
+        path: 'pedidos/:id',
+        name: 'pedido-detalhes',
+        component: () => import('@/views/PedidoDetalhesView.vue'),
+      },
+      // Cozinha (Kitchen)
+      {
+        path: 'cozinha',
+        name: 'cozinha',
+        component: () => import('@/views/CozinhaView.vue'),
+      },
       // Pagamentos (Payments)
       {
         path: 'pagamentos',
         name: 'pagamentos',
         component: () => import('@/views/PagamentosView.vue'),
+      },
+      {
+        path: 'pagamentos/processar',
+        name: 'pagamentos-processar',
+        component: () => import('@/views/PagamentosProcessarView.vue'),
       },
       {
         path: 'pagamentos/historico',

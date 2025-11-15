@@ -2,14 +2,15 @@
 import type { SidebarProps } from '@/components/ui/sidebar'
 import { RouterLink } from 'vue-router'
 
-import { 
+import {
   GalleryVerticalEnd,
   LayoutDashboard,
   UtensilsCrossed,
   Settings,
   Calculator,
   CreditCard,
-  ClipboardList
+  ClipboardList,
+  ChefHat
 } from "lucide-vue-next"
 import {
   Sidebar,
@@ -46,8 +47,8 @@ const data = {
           url: "/mesas",
         },
         {
-          title: "Gestão de Pedidos",
-          url: "/mesas/pedidos",
+          title: "Layout Visual",
+          url: "/mesas/layout",
         },
       ],
     },
@@ -55,6 +56,12 @@ const data = {
       title: "Pedidos",
       url: "/pedidos",
       icon: ClipboardList,
+      items: [],
+    },
+    {
+      title: "Cozinha",
+      url: "/cozinha",
+      icon: ChefHat,
       items: [],
     },
     {

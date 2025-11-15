@@ -54,4 +54,9 @@ export const ordersApi = {
   async deleteOrder(id: number): Promise<void> {
     await api.delete(`/order/${id}/delete/`)
   },
+
+  async updateOrderItemStatus(itemId: number, status: string): Promise<Order> {
+    const response = await api.patch(`/order-item/${itemId}/status/`, { status })
+    return response.data.order
+  },
 }

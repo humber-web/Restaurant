@@ -266,6 +266,79 @@ class TransferOrderItemsView(APIView):
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
+class UpdateOrderItemStatusView(APIView):
+    """
+    Update individual order item status.
+    Requires: authentication
+    """
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk, *args, **kwargs):
+        """
+        Update status of a specific order item.
+
+        Request body:
+        {
+            "status": "1" | "2" | "3" | "4"
+        }
+
+        Where:
+        - 1: Pending
+        - 2: Preparing
+        - 3: Ready
+        - 4: Delivered/Cancelled
+        """
+        order_item = get_object_or_404(OrderItem, pk=pk)
+        new_status = request.data.get('status')
+
+        if not new_status:
+            return Response({
+                'detail': 'status field is required.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        if new_status not in ['1', '2', '3', '4']:
+            return Response({
+                'detail': 'Invalid status value. Must be 1, 2, 3, or 4.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Update status
+        order_item.status = new_status
+        order_item.save()
+
+        # Auto-update order status based on all item statuses
+        order = order_item.order
+        all_items = order.items.all()
+
+        if all_items.exists():
+            item_statuses = set(all_items.values_list('status', flat=True))
+
+            # If all items are delivered (status '4'), mark order as DELIVERED
+            if item_statuses == {'4'}:
+                order.status = 'DELIVERED'
+            # If all items are ready (status '3'), mark order as READY
+            elif item_statuses == {'3'}:
+                order.status = 'READY'
+            # If any item is preparing (status '2'), mark order as PREPARING
+            elif '2' in item_statuses:
+                order.status = 'PREPARING'
+            # If all items are pending (status '1'), mark order as PENDING
+            elif item_statuses == {'1'}:
+                order.status = 'PENDING'
+            # Mixed statuses with no '2' - set to PREPARING to indicate work in progress
+            else:
+                order.status = 'PREPARING'
+
+            order.save()
+
+        # Return the full order with updated items
+        serializer = OrderSerializer(order)
+
+        return Response({
+            'detail': 'Order item status updated successfully.',
+            'order': serializer.data
+        }, status=status.HTTP_200_OK)
+
+
 class DeleteOrderView(APIView):
     """
     Delete an order.

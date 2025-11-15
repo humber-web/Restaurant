@@ -63,7 +63,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function isManager() {
-    return user.value?.groups.some((group) => group === 1) // Assuming manager group ID is 1
+    // Check if user is staff, superuser, or in manager group (ID 1)
+    return user.value?.is_staff === true ||
+           user.value?.is_superuser === true ||
+           user.value?.groups.some((group) => group === 1)
   }
 
   return {

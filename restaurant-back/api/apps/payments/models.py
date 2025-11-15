@@ -56,3 +56,23 @@ class Payment(models.Model):
         verbose_name = 'Payment'
         verbose_name_plural = 'Payments'
         ordering = ['-created_at']
+
+
+class PaymentItem(models.Model):
+    """
+    Tracks which specific order items were paid for in each payment.
+    Allows for partial payments of specific items.
+    """
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, related_name='paid_items')
+    order_item = models.ForeignKey('orders.OrderItem', on_delete=models.CASCADE, related_name='payments')
+    quantity_paid = models.PositiveIntegerField(default=1, help_text="How many of this item were paid in this payment")
+    amount_paid = models.DecimalField(max_digits=10, decimal_places=2, help_text="Amount paid for this item in this payment")
+
+    def __str__(self):
+        return f"Payment {self.payment.paymentID} - {self.quantity_paid}x {self.order_item.menu_item.name}"
+
+    class Meta:
+        db_table = 'apps_payment_item'
+        verbose_name = 'Payment Item'
+        verbose_name_plural = 'Payment Items'
+

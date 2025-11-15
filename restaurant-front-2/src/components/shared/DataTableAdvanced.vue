@@ -11,7 +11,7 @@ import {
   type SortingState,
   type VisibilityState,
 } from '@tanstack/vue-table'
-import { ref, computed, h } from 'vue'
+import { ref, computed, h, watch } from 'vue'
 import { ArrowUpDown, ChevronDown } from 'lucide-vue-next'
 import { Button } from '@/components/ui/button'
 import {
@@ -36,17 +36,20 @@ interface Props {
   searchKey?: string
   searchPlaceholder?: string
   showColumnToggle?: boolean
+  globalFilter?: boolean
 }
 
 const props = withDefaults(defineProps<Props>(), {
   searchPlaceholder: 'Pesquisar...',
   showColumnToggle: true,
+  globalFilter: false,
 })
 
 const sorting = ref<SortingState>([])
 const columnFilters = ref<ColumnFiltersState>([])
 const columnVisibility = ref<VisibilityState>({})
 const rowSelection = ref({})
+const globalFilterValue = ref('')
 
 const table = useVueTable({
   get data() {
@@ -71,6 +74,25 @@ const table = useVueTable({
   onRowSelectionChange: (updaterOrValue) => {
     rowSelection.value = typeof updaterOrValue === 'function' ? updaterOrValue(rowSelection.value) : updaterOrValue
   },
+  onGlobalFilterChange: (updaterOrValue) => {
+    globalFilterValue.value = typeof updaterOrValue === 'function' ? updaterOrValue(globalFilterValue.value) : updaterOrValue
+  },
+  globalFilterFn: (row, columnId, filterValue) => {
+    const search = filterValue.toLowerCase()
+
+    // Get all cell values as strings
+    const rowValues = row.getAllCells().map(cell => {
+      const value = cell.getValue()
+      if (value == null) return ''
+      if (typeof value === 'object') {
+        return JSON.stringify(value).toLowerCase()
+      }
+      return String(value).toLowerCase()
+    })
+
+    // Check if any cell contains the search term
+    return rowValues.some(value => value.includes(search))
+  },
   state: {
     get sorting() {
       return sorting.value
@@ -84,13 +106,23 @@ const table = useVueTable({
     get rowSelection() {
       return rowSelection.value
     },
+    get globalFilter() {
+      return globalFilterValue.value
+    },
   },
 })
 
 const filterValue = computed({
-  get: () => (props.searchKey ? (table.getColumn(props.searchKey)?.getFilterValue() as string) ?? '' : ''),
+  get: () => {
+    if (props.globalFilter) {
+      return globalFilterValue.value
+    }
+    return props.searchKey ? (table.getColumn(props.searchKey)?.getFilterValue() as string) ?? '' : ''
+  },
   set: (value) => {
-    if (props.searchKey) {
+    if (props.globalFilter) {
+      table.setGlobalFilter(value)
+    } else if (props.searchKey) {
       table.getColumn(props.searchKey)?.setFilterValue(value)
     }
   },
@@ -122,7 +154,7 @@ function getColumnLabel(column: any): string {
     <!-- Toolbar -->
     <div class="flex items-center justify-between gap-2">
       <Input
-        v-if="searchKey"
+        v-if="searchKey || globalFilter"
         v-model="filterValue"
         :placeholder="searchPlaceholder"
         class="max-w-sm"

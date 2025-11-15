@@ -14,4 +14,5 @@ urlpatterns = [
     path('api/', include('apps.orders.urls')),        # Order management (Premium)
     path('api/', include('apps.payments.urls')),      # Payment processing (Premium)
     path('api/', include('apps.cash_register.urls')), # Cash register (Premium)
+    path('api/', include('apps.audit.urls')),         # Audit logs
 ]

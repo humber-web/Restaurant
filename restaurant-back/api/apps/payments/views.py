@@ -90,7 +90,8 @@ class ProcessPaymentView(APIView):
         {
             "orderID": 123,
             "amount": 150.00,
-            "payment_method": "CASH" | "CREDIT_CARD" | "DEBIT_CARD" | "ONLINE"
+            "payment_method": "CASH" | "CREDIT_CARD" | "DEBIT_CARD" | "ONLINE",
+            "selected_item_ids": [1, 2, 3]  // Optional: specific order item IDs being paid
         }
 
         Returns:
@@ -111,6 +112,7 @@ class ProcessPaymentView(APIView):
         order_id = request.data.get('orderID')
         amount = request.data.get('amount')
         payment_method = request.data.get('payment_method')
+        selected_items = request.data.get('selected_items', [])  # Optional: [{"menu_item_id": 1, "quantity": 2}]
 
         # Validate required fields
         if not all([order_id, amount, payment_method]):
@@ -131,12 +133,21 @@ class ProcessPaymentView(APIView):
 
         grand_total = Decimal(order.grandTotal)
 
-        # Validate payment amount
-        if amount < grand_total:
+        # Validate payment amount (allow partial payments)
+        if amount <= 0:
             return Response({
-                'error': 'Insufficient payment amount.',
-                'required': str(grand_total),
-                'provided': str(amount)
+                'error': 'Invalid payment amount.',
+                'hint': 'Amount must be greater than zero.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check how much is still owed (prevent overpayment)
+        remaining = order.remaining_amount()
+        if amount > remaining:
+            return Response({
+                'error': 'Payment amount exceeds remaining balance.',
+                'remaining': str(remaining),
+                'attempted': str(amount),
+                'hint': f'This order only needs €{remaining}. Please adjust the payment amount.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
         # Verify user has an open cash register
@@ -161,11 +172,52 @@ class ProcessPaymentView(APIView):
             cash_register=cash_register
         )
 
+        # Track which items were paid (if specified)
+        if selected_items:
+            from .models import PaymentItem
+
+            # Build a map of menu_item_id -> quantity to pay
+            items_to_pay = {
+                item_data['menu_item_id']: item_data['quantity']
+                for item_data in selected_items
+            }
+
+            for item in order.items.all():
+                menu_item_id = item.menu_item.itemID
+
+                # Check if this item should be paid
+                if menu_item_id in items_to_pay:
+                    quantity_to_pay = items_to_pay[menu_item_id]
+
+                    # Validate quantity
+                    if quantity_to_pay <= 0:
+                        continue  # Skip invalid quantities
+
+                    # Don't allow paying more than what's remaining
+                    remaining_qty = item.remaining_quantity()
+                    if quantity_to_pay > remaining_qty:
+                        quantity_to_pay = remaining_qty
+
+                    if quantity_to_pay > 0:
+                        # Calculate amount for the specific quantity (with IVA)
+                        item_unit_price = item.price  # Price per unit
+                        item_subtotal = item_unit_price * quantity_to_pay
+                        item_with_iva = item_subtotal * Decimal('1.15')  # Add 15% IVA
+
+                        PaymentItem.objects.create(
+                            payment=payment,
+                            order_item=item,
+                            quantity_paid=quantity_to_pay,
+                            amount_paid=item_with_iva
+                        )
+
         # Add transaction to cash register
         cash_register.add_transaction(amount, payment_method)
 
-        # Update order payment status
-        if amount >= order.grandTotal:
+        # Update order payment status based on remaining amount AFTER this payment
+        # Note: remaining_amount() already accounts for the payment we just created above
+        new_remaining = order.remaining_amount()
+        if new_remaining <= Decimal('0.01'):  # Account for rounding errors
             order.paymentStatus = 'PAID'
             # Release reserved inventory after successful payment
             self._release_inventory(order)
