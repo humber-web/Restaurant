@@ -77,6 +77,8 @@ class FiscalService:
         Calculate SHA-256 hash for invoice integrity.
         Hash is calculated from: invoice_date + invoice_no + grand_total + previous_hash
 
+        For the first invoice, previous_hash is empty string ''.
+
         Args:
             payment: Payment instance
 
@@ -87,9 +89,9 @@ class FiscalService:
         invoice_date_str = payment.invoice_date.strftime('%Y-%m-%d') if payment.invoice_date else ''
         invoice_no = payment.invoice_no or ''
         grand_total_str = f"{float(payment.order.grandTotal):.2f}"
-        previous_hash = payment.previous_invoice_hash or ''
+        previous_hash = payment.previous_invoice_hash if payment.previous_invoice_hash else ''
 
-        # Concatenate for hash
+        # Concatenate for hash (first invoice will have empty previous_hash)
         hash_string = f"{invoice_date_str}{invoice_no}{grand_total_str}{previous_hash}"
 
         # Calculate SHA-256
@@ -103,11 +105,14 @@ class FiscalService:
         """
         Get the hash of the previous invoice (for hash chaining).
 
+        For the FIRST invoice, returns empty string '' which is the standard
+        for starting a hash chain in SAF-T CV.
+
         Args:
             invoice_type: Type of invoice
 
         Returns:
-            str or None: Previous invoice hash
+            str: Previous invoice hash, or empty string for first invoice
         """
         from apps.payments.models import Payment
 
@@ -120,7 +125,9 @@ class FiscalService:
 
         if last_payment:
             return last_payment.invoice_hash
-        return None
+
+        # First invoice: use empty string as previous hash
+        return ''
 
     @staticmethod
     def generate_iud(payment):
