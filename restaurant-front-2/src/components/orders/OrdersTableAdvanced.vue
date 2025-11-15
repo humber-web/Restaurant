@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { h } from 'vue'
-import { RouterLink } from 'vue-router'
+import { RouterLink, useRouter } from 'vue-router'
 import type { ColumnDef } from '@tanstack/vue-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,8 @@ interface Props {
 }
 
 defineProps<Props>()
+
+const router = useRouter()
 
 // Helper functions for formatting
 function getOrderStatusVariant(status: string): 'default' | 'secondary' | 'outline' | 'destructive' {
@@ -170,7 +172,7 @@ const columns: ColumnDef<Order>[] = [
             // Navigate to table order view
             const tableId = order.details?.table
             if (tableId) {
-              window.location.href = `/mesas/pedidos?table=${tableId}`
+              router.push(`/mesas/pedidos?table=${tableId}`)
             }
           },
           title: 'Ver Detalhes',
@@ -180,7 +182,7 @@ const columns: ColumnDef<Order>[] = [
           size: 'sm',
           onClick: () => {
             // Navigate to payment processing
-            window.location.href = `/pagamentos/processar?order=${order.orderID}`
+            router.push(`/pagamentos/processar?order=${order.orderID}`)
           },
           title: 'Processar Pagamento',
           disabled: order.paymentStatus === 'PAID',
@@ -197,7 +199,7 @@ const columns: ColumnDef<Order>[] = [
   <DataTableAdvanced
     :data="orders"
     :columns="columns"
-    search-key="orderID"
-    search-placeholder="Pesquisar por ID de Pedido..."
+    :global-filter="true"
+    search-placeholder="Pesquisar pedidos (ID, Mesa, Status, Total...)..."
   />
 </template>
