@@ -32,6 +32,12 @@ import {
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import {
   Users,
   CreditCard,
   ArrowRightLeft,
@@ -45,6 +51,7 @@ import {
   Store,
   ArrowLeft,
   Printer,
+  Zap,
 } from 'lucide-vue-next'
 import PrintProforma from '@/components/print/PrintProforma.vue'
 import { usePrint } from '@/composables/usePrint'
@@ -518,6 +525,42 @@ function goBack() {
   router.push('/mesas')
 }
 
+// Keyboard shortcuts
+function handleKeyPress(event: KeyboardEvent) {
+  // Don't trigger if user is typing in an input
+  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+    return
+  }
+
+  const key = event.key.toLowerCase()
+
+  if (currentOrder.value) {
+    switch (key) {
+      case 'p':
+        openPaymentDialog()
+        break
+      case 't':
+        openTransferDialog()
+        break
+      case 'i':
+        printProforma()
+        break
+      case 'c':
+        openDeleteDialog()
+        break
+      case 'escape':
+        if (showTransferDialog.value) showTransferDialog.value = false
+        if (showDeleteDialog.value) showDeleteDialog.value = false
+        break
+    }
+  }
+
+  // Add to cart shortcut (always available)
+  if (key === 'a' && cartTotalItems.value > 0) {
+    addCartToOrder()
+  }
+}
+
 // Lifecycle
 onMounted(() => {
   // Initialize WebSocket for real-time order updates
@@ -525,6 +568,9 @@ onMounted(() => {
 
   // Fetch initial data
   fetchData()
+
+  // Add keyboard shortcuts
+  window.addEventListener('keydown', handleKeyPress)
 })
 
 onUnmounted(() => {
@@ -532,34 +578,46 @@ onUnmounted(() => {
 
   // Close WebSocket connection
   ordersStore.closeWebSocket()
+
+  // Remove keyboard shortcuts
+  window.removeEventListener('keydown', handleKeyPress)
 })
 </script>
 
 <template>
-  <div class="flex h-full flex-col gap-4 p-6">
-    <!-- Toast Notification -->
-    <div
-      v-if="toastMessage"
-      class="fixed top-4 right-4 z-50 rounded-lg border px-4 py-3 shadow-lg transition-all"
-      :class="toastVariant === 'success' ? 'bg-green-50 border-green-200 text-green-900' : 'bg-red-50 border-red-200 text-red-900'"
-    >
-      {{ toastMessage }}
-    </div>
-
-    <!-- Breadcrumb / Header -->
-    <div class="flex items-center gap-4">
-      <Button variant="ghost" size="icon" @click="goBack">
-        <ArrowLeft class="h-5 w-5" />
-      </Button>
-      <div>
-        <div class="text-sm text-muted-foreground">
-          <span class="hover:underline cursor-pointer" @click="goBack">Mesas</span>
-          <span class="mx-2">/</span>
-          <span>Mesa {{ tableId }}</span>
-        </div>
-        <h1 class="text-3xl font-bold">Gestão de Pedidos</h1>
+  <TooltipProvider>
+    <div class="flex h-full flex-col gap-4 p-6">
+      <!-- Toast Notification -->
+      <div
+        v-if="toastMessage"
+        class="fixed top-4 right-4 z-50 rounded-lg border px-4 py-3 shadow-lg transition-all"
+        :class="toastVariant === 'success' ? 'bg-green-50 border-green-200 text-green-900' : 'bg-red-50 border-red-200 text-red-900'"
+      >
+        {{ toastMessage }}
       </div>
-    </div>
+
+      <!-- Keyboard Shortcuts Hint -->
+      <div class="fixed top-4 left-1/2 -translate-x-1/2 z-50">
+        <Badge variant="outline" class="bg-background/95 backdrop-blur-sm shadow-lg border-primary/20">
+          <Zap class="h-3 w-3 mr-1.5 text-yellow-500" />
+          <span class="text-xs">Atalhos: P=Pagar • T=Transferir • I=Imprimir • A=Adicionar • C=Cancelar</span>
+        </Badge>
+      </div>
+
+      <!-- Breadcrumb / Header -->
+      <div class="flex items-center gap-4">
+        <Button variant="ghost" size="icon" @click="goBack">
+          <ArrowLeft class="h-5 w-5" />
+        </Button>
+        <div class="flex-1">
+          <div class="text-sm text-muted-foreground">
+            <span class="hover:underline cursor-pointer" @click="goBack">Mesas</span>
+            <span class="mx-2">/</span>
+            <span>Mesa {{ tableId }}</span>
+          </div>
+          <h1 class="text-3xl font-bold">Gestão de Pedidos</h1>
+        </div>
+      </div>
 
     <!-- Loading State -->
     <div v-if="isLoading" class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1">
@@ -578,91 +636,125 @@ onUnmounted(() => {
     <!-- Main Content: Three Column Layout -->
     <div v-else class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 overflow-hidden">
       <!-- Column 1: Table Info & Summary (30%) -->
-      <div class="lg:col-span-3 space-y-4 overflow-y-auto">
-        <!-- Table Card -->
-        <Card>
-          <CardHeader>
-            <div class="flex items-center justify-between">
-              <CardTitle>Mesa {{ tableId }}</CardTitle>
-              <Badge :variant="currentTable?.status === 'OC' ? 'destructive' : 'secondary'">
-                {{ currentTable?.status === 'OC' ? 'Ocupada' : currentTable?.status === 'RE' ? 'Reservada' : 'Disponível' }}
-              </Badge>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div class="space-y-2 text-sm">
-              <div class="flex items-center gap-2">
-                <Users class="h-4 w-4 text-muted-foreground" />
-                <span>{{ currentTable?.capacity }} pessoas</span>
-              </div>
-              <Separator v-if="currentOrder" />
-              <div v-if="currentOrder">
-                <span class="text-muted-foreground">Pedido:</span>
-                <span class="font-semibold"> #{{ currentOrder.orderID }}</span>
-              </div>
-              <div v-if="currentOrder">
-                <span class="text-muted-foreground">Criado:</span>
-                <span> {{ formatDateTime(currentOrder.created_at) }}</span>
-              </div>
-              <div v-if="currentOrder">
-                <span class="text-muted-foreground">Atualizado:</span>
-                <span> {{ formatDateTime(currentOrder.updated_at) }}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <!-- Order Summary Card -->
-        <Card v-if="currentOrder">
-          <CardHeader>
-            <CardTitle class="text-lg">Resumo</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div class="space-y-2">
-              <div class="flex justify-between text-sm">
-                <span class="text-muted-foreground">Subtotal:</span>
-                <span>CVE{{ orderTotals.totalAmount.toFixed(2) }}</span>
-              </div>
-              <div class="flex justify-between text-sm">
-                <span class="text-muted-foreground">IVA (15%):</span>
-                <span>CVE{{ orderTotals.totalIva.toFixed(2) }}</span>
-              </div>
-              <Separator />
-              <div class="flex justify-between text-lg font-bold">
-                <span>Total:</span>
-                <span>CVE{{ orderTotals.grandTotal.toFixed(2) }}</span>
-              </div>
-              <div class="mt-2 space-y-1">
-                <Badge :variant="paymentStatusConfig[currentOrder.paymentStatus]?.variant">
-                  {{ paymentStatusConfig[currentOrder.paymentStatus]?.label }}
-                </Badge>
-                <br />
-                <Badge :variant="orderStatusConfig[currentOrder.status]?.variant">
-                  {{ orderStatusConfig[currentOrder.status]?.label }}
+      <div class="lg:col-span-3 flex flex-col overflow-hidden">
+        <!-- Scrollable Info Section -->
+        <div class="flex-1 overflow-y-auto space-y-4 pb-4">
+          <!-- Table Card -->
+          <Card>
+            <CardHeader>
+              <div class="flex items-center justify-between">
+                <CardTitle>Mesa {{ tableId }}</CardTitle>
+                <Badge :variant="currentTable?.status === 'OC' ? 'destructive' : 'secondary'">
+                  {{ currentTable?.status === 'OC' ? 'Ocupada' : currentTable?.status === 'RE' ? 'Reservada' : 'Disponível' }}
                 </Badge>
               </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardHeader>
+            <CardContent>
+              <div class="space-y-2 text-sm">
+                <div class="flex items-center gap-2">
+                  <Users class="h-4 w-4 text-muted-foreground" />
+                  <span>{{ currentTable?.capacity }} pessoas</span>
+                </div>
+                <Separator v-if="currentOrder" />
+                <div v-if="currentOrder">
+                  <span class="text-muted-foreground">Pedido:</span>
+                  <span class="font-semibold"> #{{ currentOrder.orderID }}</span>
+                </div>
+                <div v-if="currentOrder">
+                  <span class="text-muted-foreground">Criado:</span>
+                  <span> {{ formatDateTime(currentOrder.created_at) }}</span>
+                </div>
+                <div v-if="currentOrder">
+                  <span class="text-muted-foreground">Atualizado:</span>
+                  <span> {{ formatDateTime(currentOrder.updated_at) }}</span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
-        <!-- Action Buttons -->
-        <div v-if="currentOrder" class="space-y-2">
-          <Button class="w-full" size="lg" @click="openPaymentDialog">
-            <CreditCard class="mr-2 h-4 w-4" />
-            Processar Pagamento
-          </Button>
-          <Button class="w-full" variant="outline" @click="printProforma">
-            <Printer class="mr-2 h-4 w-4" />
-            Imprimir Proforma
-          </Button>
-          <Button class="w-full" variant="outline" @click="openTransferDialog">
-            <ArrowRightLeft class="mr-2 h-4 w-4" />
-            Transferir Pedido
-          </Button>
-          <Button class="w-full" variant="destructive" @click="openDeleteDialog">
-            <Trash2 class="mr-2 h-4 w-4" />
-            Cancelar Pedido
-          </Button>
+          <!-- Order Summary Card -->
+          <Card v-if="currentOrder">
+            <CardHeader>
+              <CardTitle class="text-lg">Resumo</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div class="space-y-2">
+                <div class="flex justify-between text-sm">
+                  <span class="text-muted-foreground">Subtotal:</span>
+                  <span>CVE{{ orderTotals.totalAmount.toFixed(2) }}</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span class="text-muted-foreground">IVA (15%):</span>
+                  <span>CVE{{ orderTotals.totalIva.toFixed(2) }}</span>
+                </div>
+                <Separator />
+                <div class="flex justify-between text-lg font-bold">
+                  <span>Total:</span>
+                  <span>CVE{{ orderTotals.grandTotal.toFixed(2) }}</span>
+                </div>
+                <div class="mt-2 space-y-1">
+                  <Badge :variant="paymentStatusConfig[currentOrder.paymentStatus]?.variant">
+                    {{ paymentStatusConfig[currentOrder.paymentStatus]?.label }}
+                  </Badge>
+                  <br />
+                  <Badge :variant="orderStatusConfig[currentOrder.status]?.variant">
+                    {{ orderStatusConfig[currentOrder.status]?.label }}
+                  </Badge>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        <!-- Sticky Action Buttons -->
+        <div v-if="currentOrder" class="border-t pt-4 bg-background space-y-2">
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <Button class="w-full" size="lg" @click="openPaymentDialog">
+                <CreditCard class="mr-2 h-4 w-4" />
+                Processar Pagamento
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Pressione <kbd class="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded">P</kbd> para abrir</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <Button class="w-full" variant="outline" @click="printProforma">
+                <Printer class="mr-2 h-4 w-4" />
+                Imprimir Proforma
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Pressione <kbd class="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded">I</kbd> para imprimir</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <Button class="w-full" variant="outline" @click="openTransferDialog">
+                <ArrowRightLeft class="mr-2 h-4 w-4" />
+                Transferir Pedido
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Pressione <kbd class="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded">T</kbd> para transferir</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <Tooltip>
+            <TooltipTrigger as-child>
+              <Button class="w-full" variant="destructive" @click="openDeleteDialog">
+                <Trash2 class="mr-2 h-4 w-4" />
+                Cancelar Pedido
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p>Pressione <kbd class="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded">C</kbd> para cancelar</p>
+            </TooltipContent>
+          </Tooltip>
         </div>
       </div>
 
@@ -822,12 +914,106 @@ onUnmounted(() => {
               <span class="text-muted-foreground">No carrinho:</span>
               <span class="font-semibold">{{ cartTotalItems }} item(ns)</span>
             </div>
-            <Button class="w-full" @click="addCartToOrder">
-              <Plus class="mr-2 h-4 w-4" />
-              Adicionar ao Pedido
-            </Button>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <Button class="w-full" @click="addCartToOrder">
+                  <Plus class="mr-2 h-4 w-4" />
+                  Adicionar ao Pedido
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>Pressione <kbd class="px-1.5 py-0.5 text-xs font-semibold bg-muted rounded">A</kbd> para adicionar</p>
+              </TooltipContent>
+            </Tooltip>
           </div>
           <p v-else class="text-sm text-muted-foreground text-center py-2">Carrinho vazio</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Floating Quick Action Bar (Bottom of Screen) -->
+    <div class="fixed bottom-0 left-0 right-0 z-40 bg-gradient-to-t from-background via-background to-transparent pb-4 pt-8 pointer-events-none">
+      <div class="container mx-auto px-6 pointer-events-auto">
+        <div class="bg-primary/95 backdrop-blur-sm rounded-full shadow-2xl border border-primary/20 px-6 py-3 flex items-center justify-between max-w-3xl mx-auto">
+          <!-- Quick Info -->
+          <div class="flex items-center gap-4 text-primary-foreground">
+            <div class="flex items-center gap-2">
+              <Zap class="h-5 w-5 text-yellow-300" />
+              <span class="font-semibold hidden sm:inline">Ações Rápidas</span>
+            </div>
+            <div v-if="currentOrder" class="text-sm opacity-90 hidden md:inline">
+              Mesa {{ tableId }} • Pedido #{{ currentOrder.orderID }}
+            </div>
+          </div>
+
+          <!-- Quick Action Buttons -->
+          <div class="flex items-center gap-2">
+            <!-- Add to Cart Quick Button -->
+            <Tooltip v-if="cartTotalItems > 0">
+              <TooltipTrigger as-child>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  @click="addCartToOrder"
+                  class="relative"
+                >
+                  <Plus class="h-4 w-4 sm:mr-2" />
+                  <span class="hidden sm:inline">Adicionar</span>
+                  <Badge
+                    variant="destructive"
+                    class="absolute -top-2 -right-2 h-5 w-5 flex items-center justify-center p-0 text-xs"
+                  >
+                    {{ cartTotalItems }}
+                  </Badge>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Adicionar {{ cartTotalItems }} item(ns) ao pedido (A)</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <!-- Payment Quick Button -->
+            <Tooltip v-if="currentOrder">
+              <TooltipTrigger as-child>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  @click="openPaymentDialog"
+                >
+                  <CreditCard class="h-4 w-4 sm:mr-2" />
+                  <span class="hidden sm:inline">Pagar</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Processar Pagamento (P)</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <!-- Print Quick Button -->
+            <Tooltip v-if="currentOrder">
+              <TooltipTrigger as-child>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  @click="printProforma"
+                  class="hidden lg:inline-flex"
+                >
+                  <Printer class="h-4 w-4 sm:mr-2" />
+                  <span class="hidden sm:inline">Imprimir</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Imprimir Proforma (I)</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <!-- Total Display -->
+            <div v-if="currentOrder" class="hidden md:flex items-center bg-primary-foreground/10 rounded-full px-4 py-1.5 ml-2">
+              <span class="text-sm text-primary-foreground font-bold">
+                CVE{{ orderTotals.grandTotal.toFixed(2) }}
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -895,8 +1081,9 @@ onUnmounted(() => {
       </DialogContent>
     </Dialog>
 
-    <!-- Hidden Print Template -->
-    <PrintProforma v-if="currentOrder" :order="currentOrder" />
+      <!-- Hidden Print Template -->
+      <PrintProforma v-if="currentOrder" :order="currentOrder" />
 
-  </div>
+    </div>
+  </TooltipProvider>
 </template>
