@@ -6,7 +6,10 @@ from .views import (
     ListPaymentsView,
     PaymentDetailView,
     ProcessPaymentView,
-    DeletePaymentView
+    DeletePaymentView,
+    SignInvoiceView,
+    ExportSAFTView,
+    ValidateInvoiceHashView,
 )
 
 urlpatterns = [
@@ -24,4 +27,15 @@ urlpatterns = [
 
     # Delete payment
     path('payment/<int:pk>/delete/', DeletePaymentView.as_view(), name='delete-payment'),
+
+    # ===== FISCAL COMPLIANCE ENDPOINTS (SAF-T CV / e-Fatura) =====
+
+    # Sign invoice (generate fiscal fields)
+    path('payment/<int:pk>/sign/', SignInvoiceView.as_view(), name='sign-invoice'),
+
+    # Export SAF-T CV
+    path('saft/export/', ExportSAFTView.as_view(), name='export-saft'),
+
+    # Validate invoice hash
+    path('payment/<int:pk>/validate-hash/', ValidateInvoiceHashView.as_view(), name='validate-hash'),
 ]

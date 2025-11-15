@@ -7,7 +7,9 @@ from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.models import AnonymousUser
+from django.http import HttpResponse
 from decimal import Decimal
+from datetime import datetime, date
 
 from .models import Payment
 from .serializers import PaymentSerializer
@@ -15,6 +17,8 @@ from apps.common.permissions import IsManager
 from apps.common.feature_flags import FeatureFlags, Modules
 from apps.orders.models import Order
 from apps.cash_register.models import CashRegister
+from .services.fiscal_service import FiscalService
+from .services.saft_export_service import SAFTExportService
 
 
 class ListPaymentsView(APIView):
@@ -292,3 +296,135 @@ class DeletePaymentView(APIView):
         return Response({
             'detail': 'Payment deleted successfully.'
         }, status=status.HTTP_204_NO_CONTENT)
+
+
+# ===== FISCAL COMPLIANCE VIEWS (SAF-T CV / e-Fatura) =====
+
+class SignInvoiceView(APIView):
+    """
+    Sign an invoice (generate fiscal fields and mark as legally valid).
+    Requires: payments module + authentication + manager permission
+    """
+    permission_classes = [IsAuthenticated, IsManager]
+
+    def post(self, request, pk):
+        """
+        Sign an invoice by payment ID.
+        This generates: invoice_no, invoice_hash, IUD, and marks as signed.
+        """
+        payment = get_object_or_404(Payment, pk=pk)
+
+        # Check if already signed
+        if payment.is_signed:
+            return Response({
+                'error': 'Invoice is already signed and cannot be modified.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Sign the invoice
+            signed_payment = FiscalService.sign_invoice(payment)
+
+            serializer = PaymentSerializer(signed_payment)
+            return Response({
+                'detail': 'Invoice signed successfully.',
+                'payment': serializer.data
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'error': f'Failed to sign invoice: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ExportSAFTView(APIView):
+    """
+    Export SAF-T CV (Standard Audit File for Tax - Cabo Verde).
+    Requires: payments module + authentication + manager permission
+    """
+    permission_classes = [IsAuthenticated, IsManager]
+
+    def get(self, request):
+        """
+        Export SAF-T XML for a date range.
+
+        Query parameters:
+        - start_date: Start date (YYYY-MM-DD)
+        - end_date: End date (YYYY-MM-DD)
+
+        Returns:
+            XML file download
+        """
+        # Get date parameters
+        start_date_str = request.query_params.get('start_date')
+        end_date_str = request.query_params.get('end_date')
+
+        # Validate parameters
+        if not start_date_str or not end_date_str:
+            return Response({
+                'error': 'Both start_date and end_date are required (format: YYYY-MM-DD)'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date()
+        except ValueError:
+            return Response({
+                'error': 'Invalid date format. Use YYYY-MM-DD'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate date range
+        if start_date > end_date:
+            return Response({
+                'error': 'start_date must be before or equal to end_date'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Generate SAF-T XML
+            service = SAFTExportService(start_date, end_date)
+            xml_content = service.generate_saft_xml()
+
+            # Prepare HTTP response with XML file
+            filename = f'SAFT-CV_{start_date}_{end_date}.xml'
+            response = HttpResponse(xml_content, content_type='application/xml')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+            return response
+
+        except Exception as e:
+            return Response({
+                'error': f'Failed to generate SAF-T: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class ValidateInvoiceHashView(APIView):
+    """
+    Validate invoice hash chain integrity.
+    Requires: payments module + authentication + manager permission
+    """
+    permission_classes = [IsAuthenticated, IsManager]
+
+    def get(self, request, pk):
+        """
+        Validate hash for a specific invoice.
+        """
+        payment = get_object_or_404(Payment, pk=pk)
+
+        if not payment.is_signed:
+            return Response({
+                'error': 'Invoice is not signed yet.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            is_valid = FiscalService.validate_hash_chain(payment)
+
+            return Response({
+                'invoice_no': payment.invoice_no,
+                'is_valid': is_valid,
+                'invoice_hash': payment.invoice_hash,
+                'message': 'Hash is valid' if is_valid else 'Hash validation failed - invoice may have been tampered with'
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({
+                'error': f'Failed to validate hash: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
