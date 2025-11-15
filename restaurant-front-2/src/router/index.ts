@@ -45,6 +45,11 @@ const routes: RouteRecordRaw[] = [
         name: 'pedidos',
         component: () => import('@/views/PedidosView.vue'),
       },
+      {
+        path: 'pedidos/:id',
+        name: 'pedido-detalhes',
+        component: () => import('@/views/PedidoDetalhesView.vue'),
+      },
       // Cozinha (Kitchen)
       {
         path: 'cozinha',

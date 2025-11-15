@@ -169,11 +169,8 @@ const columns: ColumnDef<Order>[] = [
           variant: 'ghost',
           size: 'sm',
           onClick: () => {
-            // Navigate to table order view
-            const tableId = order.details?.table
-            if (tableId) {
-              router.push(`/mesas/pedidos?table=${tableId}`)
-            }
+            // Navigate to order details view
+            router.push(`/pedidos/${order.orderID}`)
           },
           title: 'Ver Detalhes',
         }, () => h(Eye, { class: 'h-4 w-4' })),
