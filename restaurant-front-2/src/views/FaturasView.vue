@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { paymentsApi, type ListInvoicesParams } from '@/services/api/payments'
-import type { Payment } from '@/types/models/payment'
+import type { Payment, CreditNoteReason } from '@/types/models/payment'
+import { CREDIT_NOTE_REASONS } from '@/types/models/payment'
 import InvoicesTableAdvanced from '@/components/invoices/InvoicesTableAdvanced.vue'
 import {
   Card,
@@ -20,6 +21,7 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from '@/components/ui/dialog'
 import {
   Select,
@@ -28,11 +30,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   FileText,
   Download,
   Search,
   Filter,
+  FileX,
 } from 'lucide-vue-next'
 
 // Toast notifications
@@ -61,6 +65,14 @@ const endDate = ref('')
 // Detail dialog
 const showDetailDialog = ref(false)
 const selectedInvoice = ref<Payment | null>(null)
+
+// Credit Note dialog
+const showCreditNoteDialog = ref(false)
+const creditNoteInvoice = ref<Payment | null>(null)
+const creditNoteReason = ref<CreditNoteReason>('M01')
+const isPartialCredit = ref(false)
+const partialAmount = ref<number | null>(null)
+const isIssuingCreditNote = ref(false)
 
 // Load invoices
 async function loadInvoices() {
@@ -125,6 +137,57 @@ async function downloadXML(invoice: Payment) {
     showToast('XML descarregado com sucesso!', 'success')
   } catch (error: any) {
     showToast(error.response?.data?.detail || 'Erro ao descarregar XML', 'error')
+  }
+}
+
+// Credit Note actions
+function openCreditNoteDialog(invoice: Payment) {
+  // Can only issue credit note for FT, FR, TV (not for another NC)
+  if (invoice.invoice_type === 'NC') {
+    showToast('Não pode emitir NC contra outra NC', 'error')
+    return
+  }
+
+  creditNoteInvoice.value = invoice
+  creditNoteReason.value = 'M01'
+  isPartialCredit.value = false
+  partialAmount.value = null
+  showCreditNoteDialog.value = true
+}
+
+async function issueCreditNote() {
+  if (!creditNoteInvoice.value?.paymentID) return
+
+  // Validate partial amount if checked
+  if (isPartialCredit.value) {
+    if (!partialAmount.value || partialAmount.value <= 0) {
+      showToast('Montante parcial deve ser maior que zero', 'error')
+      return
+    }
+    if (partialAmount.value > Math.abs(Number(creditNoteInvoice.value.amount))) {
+      showToast('Montante parcial não pode exceder o valor original', 'error')
+      return
+    }
+  }
+
+  try {
+    isIssuingCreditNote.value = true
+
+    const response = await paymentsApi.issueCreditNote({
+      original_invoice_id: creditNoteInvoice.value.paymentID,
+      credit_note_reason: creditNoteReason.value,
+      partial_amount: isPartialCredit.value ? partialAmount.value || undefined : undefined
+    })
+
+    showToast(response.message, 'success')
+    showCreditNoteDialog.value = false
+
+    // Reload invoices to show the new credit note
+    await loadInvoices()
+  } catch (error: any) {
+    showToast(error.response?.data?.error || 'Erro ao emitir Nota de Crédito', 'error')
+  } finally {
+    isIssuingCreditNote.value = false
   }
 }
 
@@ -271,6 +334,7 @@ onMounted(() => {
           :invoices="invoices"
           @view-details="viewDetails"
           @download-xml="downloadXML"
+          @issue-credit-note="openCreditNoteDialog"
         />
       </CardContent>
     </Card>
@@ -356,6 +420,119 @@ onMounted(() => {
             </Button>
           </div>
         </div>
+      </DialogContent>
+    </Dialog>
+
+    <!-- Credit Note Dialog -->
+    <Dialog v-model:open="showCreditNoteDialog">
+      <DialogContent class="max-w-lg">
+        <DialogHeader>
+          <DialogTitle class="flex items-center gap-2">
+            <FileX class="h-5 w-5" />
+            Emitir Nota de Crédito
+          </DialogTitle>
+          <DialogDescription>
+            Emita uma Nota de Crédito (NC) para reverter ou corrigir esta fatura
+          </DialogDescription>
+        </DialogHeader>
+
+        <div v-if="creditNoteInvoice" class="space-y-4">
+          <!-- Original Invoice Info -->
+          <div class="bg-muted/50 rounded-lg p-4 space-y-2">
+            <h3 class="font-semibold text-sm">Documento Original</h3>
+            <div class="grid grid-cols-2 gap-2 text-sm">
+              <div>
+                <Label class="text-muted-foreground">Nº Fatura:</Label>
+                <p class="font-medium">{{ creditNoteInvoice.invoice_no }}</p>
+              </div>
+              <div>
+                <Label class="text-muted-foreground">Data:</Label>
+                <p>{{ formatDate(creditNoteInvoice.invoice_date) }}</p>
+              </div>
+              <div>
+                <Label class="text-muted-foreground">Tipo:</Label>
+                <Badge :class="getInvoiceTypeBadge(creditNoteInvoice.invoice_type).class" class="text-xs">
+                  {{ getInvoiceTypeBadge(creditNoteInvoice.invoice_type).label }}
+                </Badge>
+              </div>
+              <div>
+                <Label class="text-muted-foreground">Total:</Label>
+                <p class="font-semibold">{{ formatCurrency(creditNoteInvoice.amount) }}</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Credit Note Reason -->
+          <div class="space-y-2">
+            <Label for="credit-note-reason">Motivo da Nota de Crédito *</Label>
+            <Select v-model="creditNoteReason">
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="M01">M01 - Mercadorias devolvidas</SelectItem>
+                <SelectItem value="M02">M02 - Erro de faturação</SelectItem>
+                <SelectItem value="M03">M03 - Anulação total do documento</SelectItem>
+                <SelectItem value="M04">M04 - Desconto</SelectItem>
+                <SelectItem value="M05">M05 - Devolução parcial</SelectItem>
+                <SelectItem value="M99">M99 - Outros motivos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <!-- Partial Credit Option -->
+          <div class="flex items-center space-x-2">
+            <Checkbox
+              id="partial-credit"
+              :checked="isPartialCredit"
+              @update:checked="(val) => isPartialCredit = val as boolean"
+            />
+            <Label for="partial-credit" class="text-sm cursor-pointer">
+              Crédito parcial (caso contrário, será crédito total)
+            </Label>
+          </div>
+
+          <!-- Partial Amount Input -->
+          <div v-if="isPartialCredit" class="space-y-2">
+            <Label for="partial-amount">Montante Parcial (CVE) *</Label>
+            <Input
+              id="partial-amount"
+              v-model.number="partialAmount"
+              type="number"
+              step="0.01"
+              :max="Math.abs(Number(creditNoteInvoice.amount))"
+              placeholder="0.00"
+            />
+            <p class="text-xs text-muted-foreground">
+              Máximo: {{ formatCurrency(Math.abs(Number(creditNoteInvoice.amount))) }}
+            </p>
+          </div>
+
+          <!-- Warning -->
+          <div class="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
+            <p class="text-sm text-yellow-900">
+              <strong>Atenção:</strong> A Nota de Crédito será automaticamente assinada e incluída na cadeia de hash.
+              Esta operação não pode ser revertida.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            @click="showCreditNoteDialog = false"
+            :disabled="isIssuingCreditNote"
+          >
+            Cancelar
+          </Button>
+          <Button
+            @click="issueCreditNote"
+            :disabled="isIssuingCreditNote"
+            class="bg-red-600 hover:bg-red-700"
+          >
+            {{ isIssuingCreditNote ? 'A emitir...' : 'Emitir Nota de Crédito' }}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   </div>

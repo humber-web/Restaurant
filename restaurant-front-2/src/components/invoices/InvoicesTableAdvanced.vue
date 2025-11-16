@@ -3,7 +3,7 @@ import { h, ref } from 'vue'
 import type { ColumnDef } from '@tanstack/vue-table'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { FileText, Download, Eye } from 'lucide-vue-next'
+import { FileText, Download, Eye, FileX } from 'lucide-vue-next'
 import { createSortableHeader } from '@/lib/table-helpers'
 import DataTableAdvanced from '@/components/shared/DataTableAdvanced.vue'
 import type { Payment, InvoiceType } from '@/types/models/payment'
@@ -25,6 +25,7 @@ defineProps<Props>()
 const emit = defineEmits<{
   viewDetails: [invoice: Payment]
   downloadXml: [invoice: Payment]
+  issueCreditNote: [invoice: Payment]
 }>()
 
 // Helper functions
@@ -135,13 +136,16 @@ const columns: ColumnDef<Payment>[] = [
     id: 'actions',
     header: 'Ações',
     cell: ({ row }) => {
-      return h('div', { class: 'flex gap-2' }, [
+      const invoice = row.original
+      const canIssueNC = invoice.invoice_type !== 'NC'  // Can't issue NC against another NC
+
+      const buttons = [
         h(
           Button,
           {
             variant: 'ghost',
             size: 'sm',
-            onClick: () => emit('viewDetails', row.original),
+            onClick: () => emit('viewDetails', invoice),
           },
           () => [h(Eye, { class: 'h-4 w-4' })]
         ),
@@ -150,11 +154,29 @@ const columns: ColumnDef<Payment>[] = [
           {
             variant: 'ghost',
             size: 'sm',
-            onClick: () => emit('downloadXml', row.original),
+            onClick: () => emit('downloadXml', invoice),
           },
           () => [h(Download, { class: 'h-4 w-4' })]
         ),
-      ])
+      ]
+
+      // Add "Issue Credit Note" button for FT, FR, TV (not NC)
+      if (canIssueNC) {
+        buttons.push(
+          h(
+            Button,
+            {
+              variant: 'ghost',
+              size: 'sm',
+              class: 'text-red-600 hover:text-red-700 hover:bg-red-50',
+              onClick: () => emit('issueCreditNote', invoice),
+            },
+            () => [h(FileX, { class: 'h-4 w-4' })]
+          )
+        )
+      }
+
+      return h('div', { class: 'flex gap-2' }, buttons)
     },
     enableHiding: false,
     meta: {
@@ -172,5 +194,6 @@ const columns: ColumnDef<Payment>[] = [
     search-placeholder="Pesquisar por número de fatura..."
     @viewDetails="emit('viewDetails', $event)"
     @downloadXml="emit('downloadXml', $event)"
+    @issueCreditNote="emit('issueCreditNote', $event)"
   />
 </template>
