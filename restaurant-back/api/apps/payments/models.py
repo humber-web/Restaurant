@@ -3,6 +3,7 @@ Payment Processing Models
 """
 from django.db import models
 from django.contrib.auth.models import User
+from django.core.exceptions import ValidationError
 
 
 class Payment(models.Model):
@@ -143,8 +144,41 @@ class Payment(models.Model):
         return f"Payment {self.paymentID} for Order {self.order.orderID}"
 
     def save(self, *args, **kwargs):
+        """
+        Custom save with immutability check.
+        Once a payment is signed (is_signed=True), it cannot be modified.
+        This ensures fiscal compliance - signed invoices must be immutable.
+        """
+        # Check if this is an update to an existing signed payment
+        if self.pk:  # If this is an update (not a new record)
+            try:
+                old_instance = Payment.objects.get(pk=self.pk)
+                if old_instance.is_signed:
+                    # Signed payments cannot be modified
+                    raise ValidationError(
+                        "Cannot modify a signed payment/invoice. "
+                        "Signed fiscal documents are immutable. "
+                        "To correct, issue a Credit Note (NC)."
+                    )
+            except Payment.DoesNotExist:
+                # New payment, allow save
+                pass
+
         super().save(*args, **kwargs)
         self.order.update_payment_status()
+
+    def delete(self, *args, **kwargs):
+        """
+        Custom delete with immutability check.
+        Signed payments cannot be deleted - issue a Credit Note instead.
+        """
+        if self.is_signed:
+            raise ValidationError(
+                "Cannot delete a signed payment/invoice. "
+                "Signed fiscal documents are immutable. "
+                "To cancel, issue a Credit Note (NC)."
+            )
+        super().delete(*args, **kwargs)
 
     class Meta:
         db_table = 'apps_payment'  # Use existing table
