@@ -747,3 +747,42 @@ class IssueCreditNoteView(APIView):
             return Response({
                 'error': f'Failed to issue credit note: {str(e)}'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
+class DownloadQRCodeView(APIView):
+    """
+    Download QR Code for an invoice as PNG file.
+    Requires: payments module + authentication + manager permission
+    """
+    permission_classes = [IsAuthenticated, IsManager]
+
+    def get(self, request, pk):
+        """
+        Download QR Code PNG for a specific invoice.
+        
+        QR Code contains: IUD (Identificador Único do Documento)
+        """
+        payment = get_object_or_404(Payment, pk=pk)
+
+        if not payment.is_signed or not payment.iud:
+            return Response({
+                'error': 'Invoice must be signed and have an IUD to generate QR Code.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            from .services.qrcode_service import QRCodeService
+            
+            # Generate QR Code as PNG bytes
+            qr_bytes = QRCodeService.generate_qr_code_bytes(payment.iud)
+
+            # Prepare HTTP response with PNG file
+            filename = f'qrcode_{payment.invoice_no.replace("/", "_")}.png'
+            response = HttpResponse(qr_bytes, content_type='image/png')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+
+            return response
+
+        except Exception as e:
+            return Response({
+                'error': f'Failed to generate QR Code: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
