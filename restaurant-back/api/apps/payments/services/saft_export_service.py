@@ -127,13 +127,16 @@ class SAFTExportService:
 
                 # Billing Address
                 billing_address = SubElement(customer, 'BillingAddress')
-                if cust.address_line1:
-                    SubElement(billing_address, 'AddressDetail').text = cust.address_line1
+                if cust.street_name:
+                    address_text = cust.street_name
+                    if cust.building_number:
+                        address_text += f", Nº {cust.building_number}"
+                    SubElement(billing_address, 'AddressDetail').text = address_text
                 if cust.city:
                     SubElement(billing_address, 'City').text = cust.city
                 if cust.postal_code:
                     SubElement(billing_address, 'PostalCode').text = cust.postal_code
-                SubElement(billing_address, 'Country').text = 'CV'
+                SubElement(billing_address, 'Country').text = cust.country or 'CV'
 
                 # Contact
                 SubElement(customer, 'Telephone').text = cust.telephone or 'N/A'
@@ -353,8 +356,11 @@ class SAFTExportService:
 
             # Billing Address
             billing_address = SubElement(supplier, 'BillingAddress')
-            if supp.address_line1:
-                SubElement(billing_address, 'AddressDetail').text = supp.address_line1
+            if supp.street_name:
+                address_text = supp.street_name
+                if supp.building_number:
+                    address_text += f", Nº {supp.building_number}"
+                SubElement(billing_address, 'AddressDetail').text = address_text
             if supp.city:
                 SubElement(billing_address, 'City').text = supp.city
             if supp.postal_code:
