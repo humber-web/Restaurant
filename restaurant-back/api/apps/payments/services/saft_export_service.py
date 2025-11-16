@@ -15,6 +15,17 @@ from apps.orders.models import Order
 from apps.menu.models import MenuItem
 from apps.inventory.models import InventoryItem
 
+# Import new models (with try/except for backwards compatibility)
+try:
+    from apps.customers.models import Customer
+except ImportError:
+    Customer = None
+
+try:
+    from apps.suppliers.models import Supplier
+except ImportError:
+    Supplier = None
+
 
 class SAFTExportService:
     """
@@ -50,6 +61,7 @@ class SAFTExportService:
         # Add Master Files
         master_files = SubElement(audit_file, 'MasterFiles')
         self._add_customers(master_files)
+        self._add_suppliers(master_files)
         self._add_products(master_files)
         self._add_tax_table(master_files)
 
@@ -101,37 +113,66 @@ class SAFTExportService:
         SubElement(header, 'ProductCompanyTaxID').text = self.company_settings.tax_registration_number
 
     def _add_customers(self, parent: Element):
-        """Add Customer table"""
-        # Get all users with profiles (customers)
-        customers = User.objects.filter(profile__isnull=False).select_related('profile')
+        """Add Customer table (SAF-T CV compliant)"""
+        # Use new Customer model if available, otherwise fallback to User profiles
+        if Customer:
+            customers_list = Customer.objects.filter(is_active=True)
 
-        for user in customers:
-            customer = SubElement(parent, 'Customer')
-            SubElement(customer, 'CustomerID').text = str(user.id)
+            for cust in customers_list:
+                customer = SubElement(parent, 'Customer')
+                SubElement(customer, 'CustomerID').text = str(cust.customerID)
+                SubElement(customer, 'AccountID').text = f'CLI-{cust.customerID}'
+                SubElement(customer, 'CustomerTaxID').text = cust.tax_id
+                SubElement(customer, 'CompanyName').text = cust.full_name
 
-            # Account ID (for accounting)
-            SubElement(customer, 'AccountID').text = f'CLI-{user.id}'
+                # Billing Address
+                billing_address = SubElement(customer, 'BillingAddress')
+                if cust.address_line1:
+                    SubElement(billing_address, 'AddressDetail').text = cust.address_line1
+                if cust.city:
+                    SubElement(billing_address, 'City').text = cust.city
+                if cust.postal_code:
+                    SubElement(billing_address, 'PostalCode').text = cust.postal_code
+                SubElement(billing_address, 'Country').text = 'CV'
 
-            # Tax ID (NIF) - if available
-            if hasattr(user, 'profile') and user.profile.tax_id:
-                SubElement(customer, 'CustomerTaxID').text = user.profile.tax_id
+                # Contact
+                SubElement(customer, 'Telephone').text = cust.telephone or 'N/A'
+                if cust.email:
+                    SubElement(customer, 'Email').text = cust.email
 
-            # Name
-            customer_name = f"{user.first_name} {user.last_name}".strip() or user.username
-            SubElement(customer, 'CompanyName').text = customer_name
+                # Self-billing indicator
+                SubElement(customer, 'SelfBillingIndicator').text = '0'
+        else:
+            # Fallback to old User profile method
+            customers_list = User.objects.filter(profile__isnull=False).select_related('profile')
 
-            # Contact - minimal required
-            SubElement(customer, 'Telephone').text = 'N/A'
+            for user in customers_list:
+                customer = SubElement(parent, 'Customer')
+                SubElement(customer, 'CustomerID').text = str(user.id)
+                SubElement(customer, 'AccountID').text = f'CLI-{user.id}'
 
-            # Self-billing indicator
-            SubElement(customer, 'SelfBillingIndicator').text = '0'  # 0=Não, 1=Sim
+                if hasattr(user, 'profile') and user.profile.tax_id:
+                    SubElement(customer, 'CustomerTaxID').text = user.profile.tax_id
 
-        # Add "Consumidor Final" for anonymous sales
+                customer_name = f"{user.first_name} {user.last_name}".strip() or user.username
+                SubElement(customer, 'CompanyName').text = customer_name
+                SubElement(customer, 'Telephone').text = 'N/A'
+                SubElement(customer, 'SelfBillingIndicator').text = '0'
+
+        # Add "Consumidor Final" for anonymous sales (required by SAF-T CV)
         consumer_final = SubElement(parent, 'Customer')
         SubElement(consumer_final, 'CustomerID').text = 'FINAL'
         SubElement(consumer_final, 'AccountID').text = 'CLI-FINAL'
         SubElement(consumer_final, 'CustomerTaxID').text = '999999999'
         SubElement(consumer_final, 'CompanyName').text = 'Consumidor Final'
+
+        # Minimal address for Consumidor Final
+        billing_address = SubElement(consumer_final, 'BillingAddress')
+        SubElement(billing_address, 'AddressDetail').text = 'N/A'
+        SubElement(billing_address, 'City').text = 'N/A'
+        SubElement(billing_address, 'PostalCode').text = '0000'
+        SubElement(billing_address, 'Country').text = 'CV'
+
         SubElement(consumer_final, 'Telephone').text = 'N/A'
         SubElement(consumer_final, 'SelfBillingIndicator').text = '0'
 
@@ -182,7 +223,7 @@ class SAFTExportService:
             self._add_invoice(sales_invoices, payment)
 
     def _add_invoice(self, parent: Element, payment: Payment):
-        """Add individual invoice"""
+        """Add individual invoice (SAF-T CV compliant)"""
         invoice = SubElement(parent, 'Invoice')
 
         # Invoice Number
@@ -200,9 +241,23 @@ class SAFTExportService:
         # Invoice Date
         SubElement(invoice, 'InvoiceDate').text = payment.invoice_date.strftime('%Y-%m-%d')
 
+        # SystemEntryDate (data de entrada no sistema)
+        SubElement(invoice, 'SystemEntryDate').text = payment.created_at.strftime('%Y-%m-%dT%H:%M:%S')
+
         # Customer ID
         customer_id = str(payment.order.customer.id) if payment.order.customer else 'FINAL'
         SubElement(invoice, 'CustomerID').text = customer_id
+
+        # Credit Note specific fields: References to original document
+        if payment.invoice_type == 'NC' and hasattr(payment, 'referenced_document') and payment.referenced_document:
+            doc_ref = SubElement(invoice, 'DocumentReference')
+            SubElement(doc_ref, 'InvoiceNo').text = payment.referenced_document.invoice_no
+            if payment.referenced_document.invoice_date:
+                SubElement(doc_ref, 'InvoiceDate').text = payment.referenced_document.invoice_date.strftime('%Y-%m-%d')
+
+            # Issue Reason Code (M01-M05, M99)
+            if hasattr(payment, 'credit_note_reason') and payment.credit_note_reason:
+                SubElement(invoice, 'IssueReasonCode').text = payment.credit_note_reason
 
         # Lines (Order Items)
         order_items = payment.order.items.all()
@@ -228,14 +283,32 @@ class SAFTExportService:
 
         # Document Totals
         doc_totals = SubElement(invoice, 'DocumentTotals')
-        SubElement(doc_totals, 'TaxPayable').text = f"{float(payment.order.totalIva):.2f}"
-        SubElement(doc_totals, 'NetTotal').text = f"{float(payment.order.totalAmount):.2f}"
-        SubElement(doc_totals, 'GrossTotal').text = f"{float(payment.order.grandTotal):.2f}"
+        SubElement(doc_totals, 'TaxPayable').text = f"{abs(float(payment.order.totalIva)):.2f}"
+        SubElement(doc_totals, 'NetTotal').text = f"{abs(float(payment.order.totalAmount)):.2f}"
+        SubElement(doc_totals, 'GrossTotal').text = f"{abs(float(payment.order.grandTotal)):.2f}"
 
-        # Hash
+        # Payment Methods (if applicable)
+        if payment.payment_method:
+            payment_mech = SubElement(invoice, 'PaymentMechanism')
+            payment_method_map = {
+                'CASH': 'NU',           # Numerário (Cash)
+                'CREDIT_CARD': 'CC',    # Cartão de Crédito
+                'DEBIT_CARD': 'CD',     # Cartão de Débito
+                'ONLINE': 'TB',         # Transferência Bancária
+            }
+            SubElement(payment_mech, 'PaymentMechanismType').text = payment_method_map.get(payment.payment_method, 'OU')
+            SubElement(payment_mech, 'PaymentAmount').text = f"{abs(float(payment.amount)):.2f}"
+            if payment.payment_method in ['CREDIT_CARD', 'DEBIT_CARD'] and payment.transaction_id:
+                SubElement(payment_mech, 'TransactionID').text = payment.transaction_id
+
+        # Hash (fiscal signature)
         if payment.invoice_hash:
             SubElement(invoice, 'Hash').text = payment.invoice_hash
-            SubElement(invoice, 'HashControl').text = payment.software_certificate_number
+            SubElement(invoice, 'HashControl').text = payment.software_certificate_number or '0'
+
+            # Previous Hash (hash chain integrity)
+            if payment.previous_invoice_hash:
+                SubElement(invoice, 'PreviousHash').text = payment.previous_invoice_hash
 
     def _prettify_xml(self, elem: Element) -> str:
         """Return a pretty-printed XML string"""
@@ -263,3 +336,39 @@ class SAFTExportService:
             f.write(xml_content)
 
         return file_path
+
+    def _add_suppliers(self, parent: Element):
+        """Add Supplier table (SAF-T CV compliant)"""
+        if not Supplier:
+            return  # Skip if Supplier model not available
+
+        suppliers_list = Supplier.objects.filter(is_active=True)
+
+        for supp in suppliers_list:
+            supplier = SubElement(parent, 'Supplier')
+            SubElement(supplier, 'SupplierID').text = str(supp.supplierID)
+            SubElement(supplier, 'AccountID').text = f'FOR-{supp.supplierID}'
+            SubElement(supplier, 'SupplierTaxID').text = supp.tax_id
+            SubElement(supplier, 'CompanyName').text = supp.company_name
+
+            # Billing Address
+            billing_address = SubElement(supplier, 'BillingAddress')
+            if supp.address_line1:
+                SubElement(billing_address, 'AddressDetail').text = supp.address_line1
+            if supp.city:
+                SubElement(billing_address, 'City').text = supp.city
+            if supp.postal_code:
+                SubElement(billing_address, 'PostalCode').text = supp.postal_code
+            SubElement(billing_address, 'Country').text = supp.country or 'CV'
+
+            # Contact
+            SubElement(supplier, 'Telephone').text = supp.telephone or 'N/A'
+            if supp.email:
+                SubElement(supplier, 'Email').text = supp.email
+
+            # Contact Person (optional but useful)
+            if supp.contact_person:
+                SubElement(supplier, 'Contact').text = supp.contact_person
+
+            # Self-billing indicator
+            SubElement(supplier, 'SelfBillingIndicator').text = '0'
