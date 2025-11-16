@@ -44,8 +44,9 @@ INSTALLED_APPS = [
     'apps.payments',
     'apps.cash_register',
     'apps.audit',
+    'apps.customers',  # Customer management for SAF-T CV
 
-   
+
 ]
 
 SIMPLE_JWT = {
