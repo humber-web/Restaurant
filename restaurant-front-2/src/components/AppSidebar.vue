@@ -135,6 +135,10 @@ const data = {
           title: "Clientes",
           url: "/configuracoes/clientes",
         },
+        {
+          title: "Fornecedores",
+          url: "/configuracoes/fornecedores",
+        },
       ],
     },
   ],
