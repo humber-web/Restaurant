@@ -1,5 +1,5 @@
 import { api } from './client'
-import type { Payment } from '@/types/models'
+import type { Payment, IssueCreditNotePayload, IssueCreditNoteResponse } from '@/types/models'
 
 export interface ProcessPaymentPayload {
   orderID: number
@@ -117,6 +117,18 @@ export const paymentsApi = {
    */
   async signInvoice(paymentId: number): Promise<{ detail: string; payment: Payment }> {
     const response = await api.post(`/payment/${paymentId}/sign/`)
+    return response.data
+  },
+
+  // ===== CREDIT NOTE METHODS =====
+
+  /**
+   * Issue a Credit Note (NC) against an existing invoice
+   * @param payload - Credit note details (original invoice ID, reason, optional partial amount)
+   * @returns Credit note details and original invoice reference
+   */
+  async issueCreditNote(payload: IssueCreditNotePayload): Promise<IssueCreditNoteResponse> {
+    const response = await api.post('/credit-note/issue/', payload)
     return response.data
   }
 }

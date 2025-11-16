@@ -14,6 +14,7 @@ from .views import (
     DownloadEFaturaXMLView,
     SignAndSubmitEFaturaView,
     ListInvoicesView,
+    IssueCreditNoteView,
 )
 
 urlpatterns = [
@@ -39,6 +40,9 @@ urlpatterns = [
 
     # Sign invoice (generate fiscal fields)
     path('payment/<int:pk>/sign/', SignInvoiceView.as_view(), name='sign-invoice'),
+
+    # Issue Credit Note (NC)
+    path('credit-note/issue/', IssueCreditNoteView.as_view(), name='issue-credit-note'),
 
     # Export SAF-T CV
     path('saft/export/', ExportSAFTView.as_view(), name='export-saft'),
