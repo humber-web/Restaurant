@@ -16,4 +16,5 @@ urlpatterns = [
     path('api/', include('apps.cash_register.urls')), # Cash register (Premium)
     path('api/', include('apps.audit.urls')),         # Audit logs
     path('api/', include('apps.common.urls')),        # Company settings & tax configuration
+    path('api/customers/', include('apps.customers.urls')),  # Customer management (SAF-T CV)
 ]

@@ -235,7 +235,7 @@ class EFaturaService:
 
             # Quantity
             quantity = SubElement(line, 'Quantity')
-            quantity.set('UnitCode', 'UN')  # UN = Unit
+            quantity.set('UnitCode', 'EA')  # EA = Each (standard unit code)
             quantity.set('IsStandardUnitCode', 'true')
             quantity.text = str(item.quantity)
 
@@ -246,7 +246,10 @@ class EFaturaService:
             price_extension = item.price * item.quantity
             SubElement(line, 'PriceExtension').text = f"{float(price_extension):.2f}"
 
-            # Net Total (same as price extension for simple case)
+            # Discount (0 for now - TODO: implement discounts)
+            SubElement(line, 'Discount').text = '0'
+
+            # Net Total (price extension - discount)
             SubElement(line, 'NetTotal').text = f"{float(price_extension):.2f}"
 
             # Tax (IVA 15%)
@@ -262,19 +265,29 @@ class EFaturaService:
             item_elem = SubElement(line, 'Item')
             SubElement(item_elem, 'Description').text = item.menu_item.name
             SubElement(item_elem, 'EmitterIdentification').text = str(item.menu_item.itemID)
+            SubElement(item_elem, 'HazardousRiskIndicator').text = 'false'
 
     def _add_totals(self, parent: Element):
-        """Add Totals section"""
+        """Add Totals section (conforme SAF-T CV spec)"""
         totals = SubElement(parent, 'Totals')
 
-        # Tax Total (IVA)
-        SubElement(totals, 'TaxTotal').text = f"{float(self.order.totalIva):.2f}"
+        # Price Extension Total (sum of all line extensions before discount/tax)
+        SubElement(totals, 'PriceExtensionTotalAmount').text = f"{float(self.order.totalAmount):.2f}"
 
-        # Net Total (without tax)
-        SubElement(totals, 'NetTotal').text = f"{float(self.order.totalAmount):.2f}"
+        # Charge Total (encargos adicionais - 0 por defeito)
+        SubElement(totals, 'ChargeTotalAmount').text = '0.00'
 
-        # Grand Total (with tax)
-        SubElement(totals, 'GrandTotal').text = f"{float(self.order.grandTotal):.2f}"
+        # Discount Total (descontos - 0 por defeito)
+        SubElement(totals, 'DiscountTotalAmount').text = '0.00'
+
+        # Net Total (subtotal sem impostos, após descontos)
+        SubElement(totals, 'NetTotalAmount').text = f"{float(self.order.totalAmount):.2f}"
+
+        # Tax Total (IVA total)
+        SubElement(totals, 'TaxTotalAmount').text = f"{float(self.order.totalIva):.2f}"
+
+        # Payable Amount (total a pagar = net + tax)
+        SubElement(totals, 'PayableAmount').text = f"{float(self.order.grandTotal):.2f}"
 
     def _add_payments(self, parent: Element):
         """Add Payments section"""
@@ -282,22 +295,25 @@ class EFaturaService:
 
         payment_elem = SubElement(payments, 'Payment')
 
-        # Payment means code
+        # Payment means code (conforme UNECE PaymentMeansCode)
         payment_means_map = {
             'CASH': '10',          # Cash
-            'CREDIT_CARD': '48',   # Credit card
-            'DEBIT_CARD': '49',    # Debit card
+            'CREDIT_CARD': '48',   # Bank card (credit)
+            'DEBIT_CARD': '49',    # Direct debit
             'ONLINE': '30',        # Credit transfer
         }
         means_code = payment_means_map.get(self.payment.payment_method, '10')
         SubElement(payment_elem, 'PaymentMeansCode').text = means_code
 
+        # Payment reference (use payment ID)
+        SubElement(payment_elem, 'PaymentReference').text = str(self.payment.paymentID)
+
+        # Payment date (use created_at date)
+        payment_date = self.payment.created_at.date()
+        SubElement(payment_elem, 'PaymentDate').text = payment_date.strftime('%Y-%m-%d')
+
         # Payment amount
         SubElement(payment_elem, 'PaymentAmount').text = f"{float(self.payment.amount):.2f}"
-
-        # Is paid
-        is_paid = 'true' if self.payment.payment_status == 'COMPLETED' else 'false'
-        SubElement(payment_elem, 'IsPaid').text = is_paid
 
     def _add_software(self, parent: Element):
         """Add Software information"""
