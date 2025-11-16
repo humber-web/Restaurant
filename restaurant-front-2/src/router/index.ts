@@ -134,6 +134,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/ConfiguracaoFiscalView.vue'),
         meta: { requiresManager: true },
       },
+      {
+        path: 'configuracoes/clientes',
+        name: 'configuracoes-clientes',
+        component: () => import('@/views/CustomersView.vue'),
+        meta: { requiresManager: true },
+      },
     ],
   },
 ]

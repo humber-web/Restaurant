@@ -131,6 +131,10 @@ const data = {
           title: "Configuração Fiscal",
           url: "/configuracoes/fiscal",
         },
+        {
+          title: "Clientes",
+          url: "/configuracoes/clientes",
+        },
       ],
     },
   ],
