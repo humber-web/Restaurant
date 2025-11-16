@@ -177,6 +177,13 @@ class ProcessPaymentView(APIView):
             cash_register=cash_register
         )
 
+        # Auto-copy customer from order (if exists)
+        if order.customer:
+            payment.customer = order.customer
+            payment.customer_name = order.customer.full_name
+            payment.customer_tax_id = order.customer.tax_id
+            payment.save()
+
         # Track which items were paid (if specified)
         if selected_items:
             from .models import PaymentItem
@@ -536,14 +543,21 @@ class SignAndSubmitEFaturaView(APIView):
         payment = get_object_or_404(Payment, pk=pk)
 
         try:
-            # Update customer info if provided
+            # Update customer info if provided, or auto-copy from order/customer
             customer_tax_id = request.data.get('customer_tax_id', '').strip()
             customer_name = request.data.get('customer_name', '').strip()
 
             if customer_tax_id:
+                # Manual override provided
                 payment.customer_tax_id = customer_tax_id
                 payment.customer_name = customer_name or 'Cliente'
                 payment.save(update_fields=['customer_tax_id', 'customer_name'])
+            elif payment.order and payment.order.customer and not payment.customer_tax_id:
+                # Auto-copy from order.customer if not already set
+                payment.customer = payment.order.customer
+                payment.customer_tax_id = payment.order.customer.tax_id
+                payment.customer_name = payment.order.customer.full_name
+                payment.save(update_fields=['customer', 'customer_tax_id', 'customer_name'])
 
             # Step 1: Sign if not signed
             if not payment.is_signed:
@@ -715,6 +729,7 @@ class IssueCreditNoteView(APIView):
                 cash_register=cash_register,
                 # Fiscal fields
                 invoice_type='NC',
+                customer=original_invoice.customer,  # Copy customer ForeignKey
                 customer_tax_id=original_invoice.customer_tax_id,
                 customer_name=original_invoice.customer_name,
                 # Credit Note specific fields

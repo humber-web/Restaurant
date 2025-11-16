@@ -4,6 +4,7 @@ Payment Processing Models
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.exceptions import ValidationError
+from apps.customers.models import Customer
 
 
 class Payment(models.Model):
@@ -137,6 +138,18 @@ class Payment(models.Model):
     )
 
     # Customer Info (for SAF-T Customer table)
+    # ForeignKey to Customer model (nullable for anonymous sales)
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='payments',
+        verbose_name="Cliente",
+        help_text="Cliente registado (opcional - preencher customer_tax_id/customer_name para Consumidor Final)"
+    )
+
+    # Denormalized customer fields (for backwards compatibility and anonymous sales)
     customer_tax_id = models.CharField(
         max_length=20,
         null=True,
