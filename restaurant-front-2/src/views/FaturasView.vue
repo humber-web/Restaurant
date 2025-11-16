@@ -30,7 +30,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
 import {
   FileText,
   Download,
@@ -70,8 +69,7 @@ const selectedInvoice = ref<Payment | null>(null)
 const showCreditNoteDialog = ref(false)
 const creditNoteInvoice = ref<Payment | null>(null)
 const creditNoteReason = ref<CreditNoteReason>('M01')
-const isPartialCredit = ref(false)
-const partialAmount = ref<number | null>(null)
+const creditNoteAmount = ref<number | null>(null)  // Renamed from partialAmount
 const isIssuingCreditNote = ref(false)
 
 // Load invoices
@@ -150,33 +148,36 @@ function openCreditNoteDialog(invoice: Payment) {
 
   creditNoteInvoice.value = invoice
   creditNoteReason.value = 'M01'
-  isPartialCredit.value = false
-  partialAmount.value = null
+  // Pre-fill with full amount (user can edit for partial credit)
+  creditNoteAmount.value = Math.abs(Number(invoice.amount))
   showCreditNoteDialog.value = true
 }
 
 async function issueCreditNote() {
   if (!creditNoteInvoice.value?.paymentID) return
 
-  // Validate partial amount if checked
-  if (isPartialCredit.value) {
-    if (!partialAmount.value || partialAmount.value <= 0) {
-      showToast('Montante parcial deve ser maior que zero', 'error')
-      return
-    }
-    if (partialAmount.value > Math.abs(Number(creditNoteInvoice.value.amount))) {
-      showToast('Montante parcial não pode exceder o valor original', 'error')
-      return
-    }
+  // Validate amount
+  if (!creditNoteAmount.value || creditNoteAmount.value <= 0) {
+    showToast('Montante deve ser maior que zero', 'error')
+    return
+  }
+
+  const maxAmount = Math.abs(Number(creditNoteInvoice.value.amount))
+  if (creditNoteAmount.value > maxAmount) {
+    showToast('Montante não pode exceder o valor original', 'error')
+    return
   }
 
   try {
     isIssuingCreditNote.value = true
 
+    // Check if it's partial or full credit
+    const isFullCredit = creditNoteAmount.value === maxAmount
+
     const response = await paymentsApi.issueCreditNote({
       original_invoice_id: creditNoteInvoice.value.paymentID,
       credit_note_reason: creditNoteReason.value,
-      partial_amount: isPartialCredit.value ? partialAmount.value || undefined : undefined
+      partial_amount: isFullCredit ? undefined : creditNoteAmount.value
     })
 
     showToast(response.message, 'success')
@@ -480,31 +481,22 @@ onMounted(() => {
             </Select>
           </div>
 
-          <!-- Partial Credit Option -->
-          <div class="flex items-center space-x-2">
-            <Checkbox
-              id="partial-credit"
-              :checked="isPartialCredit"
-              @update:checked="(val) => isPartialCredit = val as boolean"
-            />
-            <Label for="partial-credit" class="text-sm cursor-pointer">
-              Crédito parcial (caso contrário, será crédito total)
-            </Label>
-          </div>
-
-          <!-- Partial Amount Input -->
-          <div v-if="isPartialCredit" class="space-y-2">
-            <Label for="partial-amount">Montante Parcial (CVE) *</Label>
+          <!-- Credit Amount Input (always visible, pre-filled with total) -->
+          <div class="space-y-2">
+            <Label for="credit-amount">Montante a Creditar (CVE) *</Label>
             <Input
-              id="partial-amount"
-              v-model.number="partialAmount"
+              id="credit-amount"
+              v-model.number="creditNoteAmount"
               type="number"
               step="0.01"
+              min="0.01"
               :max="Math.abs(Number(creditNoteInvoice.amount))"
               placeholder="0.00"
             />
             <p class="text-xs text-muted-foreground">
-              Máximo: {{ formatCurrency(Math.abs(Number(creditNoteInvoice.amount))) }}
+              Máximo: {{ formatCurrency(Math.abs(Number(creditNoteInvoice.amount))) }} (valor total da fatura)
+              <br>
+              <span class="text-blue-600">💡 Edite o valor para crédito parcial ou deixe o total para crédito completo</span>
             </p>
           </div>
 
