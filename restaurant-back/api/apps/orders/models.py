@@ -4,6 +4,7 @@ Order Management Models
 from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import User
+from apps.customers.models import Customer
 
 
 CHOICES_STATUS = (
@@ -39,12 +40,17 @@ class Order(models.Model):
     ]
 
     orderID = models.AutoField(primary_key=True)
+
+    # Billing Customer (optional - for registered customers who need invoices)
+    # For anonymous "Consumidor Final" sales, leave this as NULL
     customer = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
+        Customer,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='customer_orders'
+        related_name='orders',
+        verbose_name="Cliente",
+        help_text="Cliente registado (opcional - deixar vazio para vendas anônimas)"
     )
     status = models.CharField(
         max_length=20,

@@ -15,8 +15,10 @@ class PaymentSerializer(serializers.ModelSerializer):
             'transaction_id', 'created_at', 'updated_at', 'processed_by',
             # Fiscal/e-Fatura fields
             'invoice_no', 'invoice_date', 'invoice_type', 'invoice_hash',
-            'previous_invoice_hash', 'iud', 'is_signed', 'customer_name',
-            'customer_tax_id', 'hash_algorithm', 'software_certificate_number',
+            'previous_invoice_hash', 'iud', 'is_signed',
+            # Customer fields (ForeignKey + denormalized text fields)
+            'customer', 'customer_name', 'customer_tax_id',
+            'hash_algorithm', 'software_certificate_number',
             # Credit Note fields
             'referenced_document', 'credit_note_reason', 'referenced_document_info',
             # QR Code
