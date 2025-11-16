@@ -414,6 +414,21 @@ onMounted(() => {
             </div>
           </div>
 
+          <!-- QR Code Section -->
+          <div v-if="selectedInvoice.qr_code" class="border-t pt-4 space-y-2">
+            <h3 class="font-semibold">QR Code e-Fatura</h3>
+            <div class="flex flex-col items-center gap-3 bg-muted/30 rounded-lg p-4">
+              <img
+                :src="selectedInvoice.qr_code"
+                alt="QR Code"
+                class="w-48 h-48 border-2 border-gray-200 rounded-lg"
+              />
+              <p class="text-xs text-muted-foreground text-center">
+                Digitalize para verificar a autenticidade da fatura
+              </p>
+            </div>
+          </div>
+
           <div class="flex gap-2 pt-4">
             <Button class="flex-1" @click="downloadXML(selectedInvoice)">
               <Download class="mr-2 h-4 w-4" />

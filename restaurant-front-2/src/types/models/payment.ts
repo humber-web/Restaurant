@@ -52,6 +52,9 @@ export interface Payment {
   referenced_document?: number  // Payment ID of original invoice
   credit_note_reason?: CreditNoteReason
   referenced_document_info?: ReferencedDocumentInfo  // Nested info from backend
+
+  // QR Code (base64 data URL)
+  qr_code?: string  // data:image/png;base64,{base64}
 }
 
 export interface ProcessPaymentPayload {
