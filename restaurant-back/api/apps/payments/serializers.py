@@ -5,6 +5,8 @@ from .models import Payment
 class PaymentSerializer(serializers.ModelSerializer):
     # Nested serializer for referenced document (read-only)
     referenced_document_info = serializers.SerializerMethodField()
+    # QR Code (generated on-demand from IUD)
+    qr_code = serializers.SerializerMethodField()
 
     class Meta:
         model = Payment
@@ -16,12 +18,14 @@ class PaymentSerializer(serializers.ModelSerializer):
             'previous_invoice_hash', 'iud', 'is_signed', 'customer_name',
             'customer_tax_id', 'hash_algorithm', 'software_certificate_number',
             # Credit Note fields
-            'referenced_document', 'credit_note_reason', 'referenced_document_info'
+            'referenced_document', 'credit_note_reason', 'referenced_document_info',
+            # QR Code
+            'qr_code'
         ]
         read_only_fields = [
             'payment_status', 'created_at', 'updated_at', 'processed_by',
             'invoice_hash', 'previous_invoice_hash', 'iud', 'is_signed',
-            'referenced_document_info'
+            'referenced_document_info', 'qr_code'
         ]
 
     def get_referenced_document_info(self, obj):
@@ -35,6 +39,18 @@ class PaymentSerializer(serializers.ModelSerializer):
                 'invoice_date': obj.referenced_document.invoice_date,
             }
         return None
+
+    def get_qr_code(self, obj):
+        """Generate QR Code from IUD (base64 data URL)."""
+        if not obj.iud:
+            return None
+
+        try:
+            from .services.qrcode_service import QRCodeService
+            return QRCodeService.generate_qr_code_for_payment(obj)
+        except Exception:
+            # Return None if QR code generation fails
+            return None
 
     def validate(self, attrs):
         order = attrs.get('order')

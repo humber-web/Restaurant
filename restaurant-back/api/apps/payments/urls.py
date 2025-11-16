@@ -15,6 +15,7 @@ from .views import (
     SignAndSubmitEFaturaView,
     ListInvoicesView,
     IssueCreditNoteView,
+    DownloadQRCodeView,
 )
 
 urlpatterns = [
@@ -60,4 +61,7 @@ urlpatterns = [
 
     # Download e-Fatura XML
     path('payment/<int:pk>/efatura/download/', DownloadEFaturaXMLView.as_view(), name='efatura-download'),
+
+    # Download QR Code
+    path('payment/<int:pk>/qrcode/download/', DownloadQRCodeView.as_view(), name='qrcode-download'),
 ]
