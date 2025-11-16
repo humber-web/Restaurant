@@ -12,7 +12,7 @@ from decimal import Decimal
 from datetime import datetime, date
 
 from .models import Payment
-from .serializers import PaymentSerializer
+from .serializers import PaymentSerializer, IssueCreditNoteSerializer
 from apps.common.permissions import IsManager
 from apps.common.feature_flags import FeatureFlags, Modules
 from apps.orders.models import Order
@@ -644,3 +644,106 @@ class ListInvoicesView(APIView):
             'page_size': page_size,
             'total_pages': (total_count + page_size - 1) // page_size
         })
+
+
+class IssueCreditNoteView(APIView):
+    """
+    Issue a Credit Note (NC) against an existing signed invoice.
+    Requires: payments module + authentication + manager permission
+    """
+    permission_classes = [IsAuthenticated, IsManager]
+
+    def post(self, request):
+        """
+        Issue a Credit Note against an existing invoice.
+
+        Request body:
+        {
+            "original_invoice_id": 123,  // Payment ID of original invoice
+            "credit_note_reason": "M01",  // SAF-T reason code (M01-M05, M99)
+            "partial_amount": 50.00  // Optional: partial credit amount
+        }
+
+        The Credit Note will:
+        - Reference the original invoice
+        - Have a negative amount (reverses the original)
+        - Be automatically signed
+        - Included in the fiscal hash chain
+        """
+        serializer = IssueCreditNoteSerializer(data=request.data)
+
+        if not serializer.is_valid():
+            return Response(
+                serializer.errors,
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Get validated data
+        original_invoice_id = serializer.validated_data['original_invoice_id']
+        credit_note_reason = serializer.validated_data['credit_note_reason']
+        partial_amount = serializer.validated_data.get('partial_amount')
+
+        # Get original invoice
+        original_invoice = get_object_or_404(Payment, paymentID=original_invoice_id)
+
+        # Calculate credit amount (negative to reverse)
+        if partial_amount:
+            credit_amount = -abs(partial_amount)  # Ensure negative
+        else:
+            credit_amount = -abs(original_invoice.amount)  # Full credit
+
+        # Verify user has an open cash register
+        cash_register = CashRegister.objects.filter(
+            user=request.user,
+            is_open=True
+        ).first()
+
+        if not cash_register:
+            return Response({
+                'error': 'No open cash register found for this user.',
+                'hint': 'Please open a cash register before issuing credit notes.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            # Create Credit Note payment
+            credit_note = Payment.objects.create(
+                order=original_invoice.order,
+                amount=credit_amount,
+                payment_method=original_invoice.payment_method,
+                payment_status='COMPLETED',
+                processed_by=request.user,
+                cash_register=cash_register,
+                # Fiscal fields
+                invoice_type='NC',
+                customer_tax_id=original_invoice.customer_tax_id,
+                customer_name=original_invoice.customer_name,
+                # Credit Note specific fields
+                referenced_document=original_invoice,
+                credit_note_reason=credit_note_reason,
+            )
+
+            # Automatically sign the Credit Note
+            credit_note = FiscalService.sign_invoice(credit_note)
+
+            # Add negative transaction to cash register (money going out)
+            cash_register.add_transaction(credit_amount, original_invoice.payment_method)
+
+            # Update order payment status
+            order = credit_note.order
+            order.update_payment_status()
+
+            return Response({
+                'detail': 'Credit Note issued and signed successfully',
+                'credit_note': PaymentSerializer(credit_note).data,
+                'original_invoice': {
+                    'paymentID': original_invoice.paymentID,
+                    'invoice_no': original_invoice.invoice_no,
+                    'amount': str(original_invoice.amount),
+                },
+                'message': f'Credited {abs(credit_amount)} against invoice {original_invoice.invoice_no}'
+            }, status=status.HTTP_201_CREATED)
+
+        except Exception as e:
+            return Response({
+                'error': f'Failed to issue credit note: {str(e)}'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

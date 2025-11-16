@@ -30,6 +30,16 @@ class Payment(models.Model):
         ('FR', 'Fatura Recibo'),    # Invoice Receipt
     ]
 
+    # SAF-T CV Credit Note Reason Codes (IssueReasonCode)
+    CREDIT_NOTE_REASON_CHOICES = [
+        ('M01', 'Mercadorias devolvidas'),
+        ('M02', 'Erro de faturação'),
+        ('M03', 'Anulação total do documento'),
+        ('M04', 'Desconto'),
+        ('M05', 'Devolução parcial'),
+        ('M99', 'Outros motivos'),
+    ]
+
     # Original fields
     paymentID = models.AutoField(primary_key=True)
     order = models.ForeignKey('orders.Order', on_delete=models.CASCADE, related_name='payments')
@@ -140,8 +150,53 @@ class Payment(models.Model):
         verbose_name="Nome do Cliente"
     )
 
+    # Credit Note Fields (only for invoice_type='NC')
+    referenced_document = models.ForeignKey(
+        'self',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='credit_notes',
+        verbose_name="Documento Referenciado",
+        help_text="Original invoice that this credit note references (only for NC)"
+    )
+    credit_note_reason = models.CharField(
+        max_length=10,
+        choices=CREDIT_NOTE_REASON_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="Motivo da Nota de Crédito",
+        help_text="SAF-T CV IssueReasonCode (M01-M05, M99)"
+    )
+
     def __str__(self):
-        return f"Payment {self.paymentID} for Order {self.order.orderID}"
+        invoice_info = f" - {self.invoice_type} {self.invoice_no}" if self.invoice_no else ""
+        return f"Payment {self.paymentID}{invoice_info}"
+
+    def clean(self):
+        """Validate model constraints."""
+        super().clean()
+
+        # Validate Credit Note requirements
+        if self.invoice_type == 'NC':
+            if not self.referenced_document:
+                raise ValidationError({
+                    'referenced_document': 'Credit Notes must reference an original document'
+                })
+            if not self.credit_note_reason:
+                raise ValidationError({
+                    'credit_note_reason': 'Credit Notes must have a reason code'
+                })
+            if self.referenced_document.invoice_type == 'NC':
+                raise ValidationError({
+                    'referenced_document': 'Cannot reference another Credit Note'
+                })
+        else:
+            # Non-NC documents should not have these fields set
+            if self.referenced_document:
+                raise ValidationError({
+                    'referenced_document': 'Only Credit Notes can reference documents'
+                })
 
     def save(self, *args, **kwargs):
         """
@@ -149,6 +204,9 @@ class Payment(models.Model):
         Once a payment is signed (is_signed=True), it cannot be modified.
         This ensures fiscal compliance - signed invoices must be immutable.
         """
+        # Validate model constraints
+        self.full_clean()
+
         # Check if this is an update to an existing signed payment
         if self.pk:  # If this is an update (not a new record)
             try:
