@@ -130,5 +130,21 @@ export const paymentsApi = {
   async issueCreditNote(payload: IssueCreditNotePayload): Promise<IssueCreditNoteResponse> {
     const response = await api.post('/credit-note/issue/', payload)
     return response.data
+  },
+
+  // ===== SAF-T CV EXPORT =====
+
+  /**
+   * Export SAF-T CV (Standard Audit File for Tax - Cabo Verde)
+   * @param startDate - Start date (YYYY-MM-DD)
+   * @param endDate - End date (YYYY-MM-DD)
+   * @returns XML file blob
+   */
+  async exportSAFT(startDate: string, endDate: string): Promise<any> {
+    const response = await api.get('/saft/export/', {
+      params: { start_date: startDate, end_date: endDate },
+      responseType: 'blob'
+    })
+    return response
   }
 }

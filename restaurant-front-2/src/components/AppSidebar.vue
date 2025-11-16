@@ -100,6 +100,10 @@ const data = {
           title: "Gestão de Faturas",
           url: "/contabilidade/faturas",
         },
+        {
+          title: "Exportação SAF-T CV",
+          url: "/contabilidade/saft",
+        },
       ],
     },
     {
