@@ -140,6 +140,12 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/CustomersView.vue'),
         meta: { requiresManager: true },
       },
+      {
+        path: 'configuracoes/fornecedores',
+        name: 'configuracoes-fornecedores',
+        component: () => import('@/views/SuppliersView.vue'),
+        meta: { requiresManager: true },
+      },
     ],
   },
 ]
