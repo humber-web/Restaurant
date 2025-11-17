@@ -19,14 +19,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { PurchaseOrder } from '@/types/models'
+import type { PurchaseOrder, CreatePurchaseOrderRequest } from '@/types/models'
 import { purchasesApi } from '@/services/api'
+import CreatePurchaseOrderDialog from '@/components/purchases/CreatePurchaseOrderDialog.vue'
 
 const purchaseOrders = ref<PurchaseOrder[]>([])
 const isLoading = ref(false)
 const statusFilter = ref<string>('ALL')
 const toastMessage = ref<string | null>(null)
 const toastVariant = ref<'success' | 'error'>('success')
+const createDialogOpen = ref(false)
 
 // Status badge styling
 const statusColors = {
@@ -108,6 +110,17 @@ async function handleStatusFilterChange(value: string) {
   statusFilter.value = value
   await fetchPurchaseOrders()
 }
+
+async function handleCreatePurchaseOrder(data: CreatePurchaseOrderRequest) {
+  try {
+    await purchasesApi.createPurchaseOrder(data)
+    showToast('Ordem de compra criada com sucesso', 'success')
+    await fetchPurchaseOrders()
+  } catch (error) {
+    showToast('Erro ao criar ordem de compra', 'error')
+    console.error('Error creating purchase order:', error)
+  }
+}
 </script>
 
 <template>
@@ -127,7 +140,7 @@ async function handleStatusFilterChange(value: string) {
         <h1 class="text-3xl font-bold tracking-tight">Ordens de Compra</h1>
         <p class="text-muted-foreground mt-1">Gerir compras a fornecedores</p>
       </div>
-      <Button size="default">
+      <Button size="default" @click="createDialogOpen = true">
         <Plus class="mr-2 h-4 w-4" />
         Nova Ordem de Compra
       </Button>
@@ -262,5 +275,11 @@ async function handleStatusFilterChange(value: string) {
         </Table>
       </CardContent>
     </Card>
+
+    <!-- Create Purchase Order Dialog -->
+    <CreatePurchaseOrderDialog
+      v-model:open="createDialogOpen"
+      @submit="handleCreatePurchaseOrder"
+    />
   </div>
 </template>
