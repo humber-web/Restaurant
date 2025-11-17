@@ -4,6 +4,7 @@ export type OrderType = 'RESTAURANT' | 'ONLINE'
 export type OrderItemStatus = '1' | '2' | '3' | '4'
 
 export interface OrderItem {
+  id?: number
   menu_item: number
   name?: string
   quantity: number

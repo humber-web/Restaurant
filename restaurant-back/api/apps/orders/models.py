@@ -4,6 +4,7 @@ Order Management Models
 from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import User
+from apps.customers.models import Customer
 
 
 CHOICES_STATUS = (
@@ -39,12 +40,17 @@ class Order(models.Model):
     ]
 
     orderID = models.AutoField(primary_key=True)
+
+    # Billing Customer (optional - for registered customers who need invoices)
+    # For anonymous "Consumidor Final" sales, leave this as NULL
     customer = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
+        Customer,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name='customer_orders'
+        related_name='orders',
+        verbose_name="Cliente",
+        help_text="Cliente registado (opcional - deixar vazio para vendas anônimas)"
     )
     status = models.CharField(
         max_length=20,
@@ -110,6 +116,18 @@ class Order(models.Model):
             self.paymentStatus = 'PENDING'
         self.save()
 
+    def total_paid(self):
+        """Calculate the total amount already paid for this order."""
+        from decimal import Decimal
+        total = self.payments.filter(payment_status='COMPLETED').aggregate(
+            total=models.Sum('amount')
+        )['total']
+        return total or Decimal('0.00')
+
+    def remaining_amount(self):
+        """Calculate the remaining unpaid amount for this order."""
+        return self.grandTotal - self.total_paid()
+
     class Meta:
         db_table = 'apps_order'  # Use existing table
         verbose_name = 'Order'
@@ -154,6 +172,32 @@ class OrderItem(models.Model):
         if order:
             order.calculate_totals()
             order.save()
+
+    def is_paid(self):
+        """
+        Check if this order item has been fully paid for.
+        Returns True if the total paid quantity equals or exceeds the order quantity.
+        """
+        from django.db.models import Sum
+
+        total_paid = self.payments.filter(
+            payment__payment_status='COMPLETED'
+        ).aggregate(total=Sum('quantity_paid'))['total'] or 0
+
+        return total_paid >= self.quantity
+
+    def remaining_quantity(self):
+        """
+        Get the remaining unpaid quantity for this order item.
+        Returns the number of items that haven't been paid for yet.
+        """
+        from django.db.models import Sum
+
+        total_paid = self.payments.filter(
+            payment__payment_status='COMPLETED'
+        ).aggregate(total=Sum('quantity_paid'))['total'] or 0
+
+        return self.quantity - total_paid
 
     def __str__(self):
         return f"Order {self.order.orderID} - Item {self.menu_item.name}"

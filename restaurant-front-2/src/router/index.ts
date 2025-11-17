@@ -30,6 +30,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/MesasView.vue'),
       },
       {
+        path: 'mesas/layout',
+        name: 'mesas-layout',
+        component: () => import('@/views/MesasLayoutView.vue'),
+      },
+      {
         path: 'mesas/pedidos',
         name: 'mesas-pedidos',
         component: () => import('@/views/MesasPedidosView.vue'),
@@ -40,11 +45,27 @@ const routes: RouteRecordRaw[] = [
         name: 'pedidos',
         component: () => import('@/views/PedidosView.vue'),
       },
+      {
+        path: 'pedidos/:id',
+        name: 'pedido-detalhes',
+        component: () => import('@/views/PedidoDetalhesView.vue'),
+      },
+      // Cozinha (Kitchen)
+      {
+        path: 'cozinha',
+        name: 'cozinha',
+        component: () => import('@/views/CozinhaView.vue'),
+      },
       // Pagamentos (Payments)
       {
         path: 'pagamentos',
         name: 'pagamentos',
         component: () => import('@/views/PagamentosView.vue'),
+      },
+      {
+        path: 'pagamentos/processar',
+        name: 'pagamentos-processar',
+        component: () => import('@/views/PagamentosProcessarView.vue'),
       },
       {
         path: 'pagamentos/historico',
@@ -68,6 +89,18 @@ const routes: RouteRecordRaw[] = [
         path: 'contabilidade/auditoria',
         name: 'contabilidade-auditoria',
         component: () => import('@/views/AuditoriaView.vue'),
+        meta: { requiresManager: true },
+      },
+      {
+        path: 'contabilidade/faturas',
+        name: 'contabilidade-faturas',
+        component: () => import('@/views/FaturasView.vue'),
+        meta: { requiresManager: true },
+      },
+      {
+        path: 'contabilidade/saft',
+        name: 'contabilidade-saft',
+        component: () => import('@/views/SAFTExportView.vue'),
         meta: { requiresManager: true },
       },
       // Configurações (Settings) - All require manager
@@ -99,6 +132,24 @@ const routes: RouteRecordRaw[] = [
         path: 'configuracoes/inventario',
         name: 'configuracoes-inventario',
         component: () => import('@/views/InventarioView.vue'),
+        meta: { requiresManager: true },
+      },
+      {
+        path: 'configuracoes/fiscal',
+        name: 'configuracoes-fiscal',
+        component: () => import('@/views/ConfiguracaoFiscalView.vue'),
+        meta: { requiresManager: true },
+      },
+      {
+        path: 'configuracoes/clientes',
+        name: 'configuracoes-clientes',
+        component: () => import('@/views/CustomersView.vue'),
+        meta: { requiresManager: true },
+      },
+      {
+        path: 'configuracoes/fornecedores',
+        name: 'configuracoes-fornecedores',
+        component: () => import('@/views/SuppliersView.vue'),
         meta: { requiresManager: true },
       },
     ],
