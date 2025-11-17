@@ -19,8 +19,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { SupplierInvoice } from '@/types/models'
+import type { SupplierInvoice, CreateSupplierInvoiceRequest } from '@/types/models'
 import { purchasesApi } from '@/services/api'
+import CreateSupplierInvoiceDialog from '@/components/purchases/CreateSupplierInvoiceDialog.vue'
 
 const invoices = ref<SupplierInvoice[]>([])
 const isLoading = ref(false)
@@ -28,6 +29,7 @@ const statusFilter = ref<string>('ALL')
 const overdueFilter = ref<boolean | undefined>(undefined)
 const toastMessage = ref<string | null>(null)
 const toastVariant = ref<'success' | 'error'>('success')
+const createDialogOpen = ref(false)
 
 // Status badge styling
 const statusColors = {
@@ -137,6 +139,17 @@ async function markAsPaid(invoiceId: number) {
     showToast('Erro ao marcar fatura como paga', 'error')
   }
 }
+
+async function handleCreateInvoice(data: CreateSupplierInvoiceRequest) {
+  try {
+    await purchasesApi.createSupplierInvoice(data)
+    showToast('Fatura de fornecedor criada com sucesso', 'success')
+    await fetchInvoices()
+  } catch (error) {
+    showToast('Erro ao criar fatura de fornecedor', 'error')
+    console.error('Error creating supplier invoice:', error)
+  }
+}
 </script>
 
 <template>
@@ -156,7 +169,7 @@ async function markAsPaid(invoiceId: number) {
         <h1 class="text-3xl font-bold tracking-tight">Faturas de Fornecedor</h1>
         <p class="text-muted-foreground mt-1">Gerir faturas recebidas de fornecedores</p>
       </div>
-      <Button size="default">
+      <Button size="default" @click="createDialogOpen = true">
         <Plus class="mr-2 h-4 w-4" />
         Nova Fatura
       </Button>
@@ -344,5 +357,11 @@ async function markAsPaid(invoiceId: number) {
         </Table>
       </CardContent>
     </Card>
+
+    <!-- Create Supplier Invoice Dialog -->
+    <CreateSupplierInvoiceDialog
+      v-model:open="createDialogOpen"
+      @submit="handleCreateInvoice"
+    />
   </div>
 </template>
