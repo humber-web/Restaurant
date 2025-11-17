@@ -103,6 +103,19 @@ const routes: RouteRecordRaw[] = [
         component: () => import('@/views/SAFTExportView.vue'),
         meta: { requiresManager: true },
       },
+      // Compras (Purchases) - All require manager
+      {
+        path: 'compras/ordens-compra',
+        name: 'compras-ordens-compra',
+        component: () => import('@/views/ComprasOrdemCompraView.vue'),
+        meta: { requiresManager: true },
+      },
+      {
+        path: 'compras/faturas-fornecedor',
+        name: 'compras-faturas-fornecedor',
+        component: () => import('@/views/ComprasFaturaFornecedorView.vue'),
+        meta: { requiresManager: true },
+      },
       // Configurações (Settings) - All require manager
       {
         path: 'configuracoes/produtos',
