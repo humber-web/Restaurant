@@ -3,7 +3,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ordersApi, menuApi, tablesApi } from '@/services/api'
 import { useOrdersStore } from '@/stores/orders'
-import type { Order, OrderItem, MenuItem, MenuCategory, Table } from '@/types/models'
+import type { Order, OrderItem, MenuItem, MenuCategory, Table, Customer } from '@/types/models'
 import {
   Card,
   CardContent,
@@ -55,6 +55,7 @@ import {
   Check,
 } from 'lucide-vue-next'
 import PrintProforma from '@/components/print/PrintProforma.vue'
+import CustomerSelector from '@/components/shared/CustomerSelector.vue'
 import { usePrint } from '@/composables/usePrint'
 
 const route = useRoute()
@@ -91,6 +92,7 @@ const selectedCategory = ref<number | null>(null)
 const menuSearchQuery = ref('')
 const cartItems = ref<Map<number, number>>(new Map()) // menuItemId -> quantity
 const recentlyAddedItem = ref<number | null>(null)
+const selectedCustomerId = ref<number | null>(null)
 
 // Dialogs
 const showTransferDialog = ref(false)
@@ -247,6 +249,7 @@ async function createOrder() {
 
   try {
     const payload = {
+      customer: selectedCustomerId.value || undefined, // Include customer if selected
       items: Array.from(cartItems.value.entries()).map(([menu_item, quantity]) => ({
         menu_item,
         quantity,
@@ -686,6 +689,17 @@ onUnmounted(() => {
               <CardTitle class="text-lg">Resumo</CardTitle>
             </CardHeader>
             <CardContent>
+              <!-- Customer Info (if assigned) -->
+              <div v-if="currentOrder.customer" class="mb-4 p-3 bg-primary/5 rounded-lg border border-primary/20">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <p class="text-xs text-muted-foreground">Cliente</p>
+                    <p class="font-semibold text-sm">{{ currentOrder.customer }}</p>
+                  </div>
+                  <Users class="h-4 w-4 text-primary" />
+                </div>
+              </div>
+
               <div class="space-y-2">
                 <div class="flex justify-between text-sm">
                   <span class="text-muted-foreground">Subtotal:</span>
@@ -932,6 +946,15 @@ onUnmounted(() => {
           </Card>
         </div>
 
+        <!-- Customer Selection (if no order exists yet) -->
+        <div v-if="!currentOrder && cartTotalItems > 0" class="border-t pt-4 mt-4 bg-background">
+          <h3 class="text-sm font-semibold mb-3">Cliente (Opcional)</h3>
+          <CustomerSelector
+            v-model="selectedCustomerId"
+            @customer-selected="(customer) => console.log('Customer selected:', customer)"
+          />
+        </div>
+
         <!-- Cart Summary (Sticky Bottom) -->
         <div class="border-t pt-4 mt-4 bg-background">
           <div v-if="cartTotalItems > 0" class="space-y-2">
@@ -943,7 +966,7 @@ onUnmounted(() => {
               <TooltipTrigger as-child>
                 <Button class="w-full" size="lg" @click="addCartToOrder">
                   <Plus class="mr-2 h-4 w-4" />
-                  Adicionar ao Pedido
+                  {{ currentOrder ? 'Adicionar ao Pedido' : 'Criar Pedido' }}
                 </Button>
               </TooltipTrigger>
               <TooltipContent side="top">

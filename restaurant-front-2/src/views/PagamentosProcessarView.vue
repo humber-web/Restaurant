@@ -702,6 +702,15 @@ onMounted(() => {
                   <span class="text-muted-foreground">Data:</span>
                   <span>{{ formatDateTime(order.created_at) }}</span>
                 </div>
+                <!-- Customer Info -->
+                <div v-if="order.customer" class="flex justify-between">
+                  <span class="text-muted-foreground">Cliente:</span>
+                  <Badge variant="secondary" class="text-xs">ID: {{ order.customer }}</Badge>
+                </div>
+                <div v-else class="flex justify-between">
+                  <span class="text-muted-foreground">Cliente:</span>
+                  <span class="text-xs italic">Consumidor Final</span>
+                </div>
               </div>
 
               <Separator />
