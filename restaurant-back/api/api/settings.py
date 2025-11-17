@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'apps.audit',
     'apps.customers',  # Customer management for SAF-T CV
     'apps.suppliers',  # Supplier management for SAF-T CV
+    'apps.purchases',  # Purchase Orders and Supplier Invoices
 
 
 ]
