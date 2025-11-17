@@ -478,6 +478,8 @@ function printReceipt() {
 
 // e-Fatura functions
 function openEFaturaDialog() {
+  // Don't set customerTaxId - backend will auto-populate from order.customer
+  // If order has no customer, backend will use "Consumidor Final"
   customerTaxId.value = ''
   eFaturaGenerated.value = false
   eFaturaResult.value = null
@@ -493,10 +495,13 @@ async function generateEFatura() {
   try {
     isGeneratingEFatura.value = true
 
-    // Pass customer tax ID if provided (otherwise backend will use "Consumidor Final")
+    // Only pass customer tax ID if order has NO customer AND user entered one manually
+    // If order has a customer, backend will auto-use it
+    const taxIdToSend = (order.value?.customer) ? undefined : (customerTaxId.value || undefined)
+
     const result = await paymentsApi.generateEFatura(
       lastPaymentId.value,
-      customerTaxId.value || undefined
+      taxIdToSend
     )
 
     eFaturaGenerated.value = true
@@ -1061,7 +1066,21 @@ onMounted(() => {
             </div>
           </div>
 
-          <div class="space-y-2">
+          <!-- Customer Info Section -->
+          <div v-if="order?.customer" class="p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div class="flex items-start gap-2">
+              <Check class="h-5 w-5 text-green-600 mt-0.5" />
+              <div class="text-sm text-green-900">
+                <p class="font-semibold mb-1">Cliente Identificado</p>
+                <p class="text-xs">
+                  A fatura será emitida para o cliente associado ao pedido (ID: {{ order.customer }}).
+                  Os dados do cliente serão automaticamente incluídos na e-Fatura.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="space-y-2">
             <Label>NIF do Cliente (opcional)</Label>
             <Input
               v-model="customerTaxId"
