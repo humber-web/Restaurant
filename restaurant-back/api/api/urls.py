@@ -18,4 +18,5 @@ urlpatterns = [
     path('api/', include('apps.common.urls')),        # Company settings & tax configuration
     path('api/customers/', include('apps.customers.urls')),  # Customer management (SAF-T CV)
     path('api/suppliers/', include('apps.suppliers.urls')),  # Supplier management (SAF-T CV)
+    path('api/purchases/', include('apps.purchases.urls')),  # Purchase Order management (SAF-T CV)
 ]
