@@ -10,7 +10,8 @@ import {
   Calculator,
   CreditCard,
   ClipboardList,
-  ChefHat
+  ChefHat,
+  ShoppingCart
 } from "lucide-vue-next"
 import {
   Sidebar,
@@ -103,6 +104,21 @@ const data = {
         {
           title: "Exportação SAF-T CV",
           url: "/contabilidade/saft",
+        },
+      ],
+    },
+    {
+      title: "Compras",
+      url: "/compras/ordens-compra",
+      icon: ShoppingCart,
+      items: [
+        {
+          title: "Ordens de Compra",
+          url: "/compras/ordens-compra",
+        },
+        {
+          title: "Faturas Fornecedor",
+          url: "/compras/faturas-fornecedor",
         },
       ],
     },
