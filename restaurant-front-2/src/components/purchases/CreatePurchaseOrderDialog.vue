@@ -29,8 +29,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { suppliersApi } from '@/services/api/suppliers'
-import { inventoryApi } from '@/services/api'
-import type { InventoryItem } from '@/types/models'
+import { inventoryApi, menuApi } from '@/services/api'
+import type { InventoryItem, MenuItem } from '@/types/models'
 import type { Supplier } from '@/types/models/supplier'
 import type { CreatePurchaseOrderRequest } from '@/types/models'
 
@@ -49,6 +49,7 @@ const emit = defineEmits<Emits>()
 // Data
 const suppliers = ref<Supplier[]>([])
 const inventoryItems = ref<InventoryItem[]>([])
+const menuItems = ref<MenuItem[]>([])
 const isLoadingSuppliers = ref(false)
 const isLoadingInventory = ref(false)
 const isSubmitting = ref(false)
@@ -96,12 +97,14 @@ async function loadData() {
   isLoadingInventory.value = true
 
   try {
-    const [suppliersData, inventoryData] = await Promise.all([
+    const [suppliersData, inventoryData, menuItemsData] = await Promise.all([
       suppliersApi.listActive(),
-      inventoryApi.getItems()
+      inventoryApi.getItems(),
+      menuApi.getItems()
     ])
     suppliers.value = suppliersData
     inventoryItems.value = inventoryData
+    menuItems.value = menuItemsData
   } catch (error) {
     console.error('Error loading data:', error)
   } finally {
@@ -126,6 +129,15 @@ function removeLineItem(id: string) {
 function getInventoryItemName(itemId: number): string {
   const item = inventoryItems.value.find(i => i.itemID === itemId)
   return item?.itemName || `Item #${itemId}`
+}
+
+function getProductName(itemId: number): string {
+  const invItem = inventoryItems.value.find(i => i.itemID === itemId)
+  if (!invItem || !invItem.menu_item) {
+    return '-'
+  }
+  const menuItem = menuItems.value.find(m => m.itemID === invItem.menu_item)
+  return menuItem?.name || '-'
 }
 
 function handleClose() {
@@ -248,16 +260,17 @@ onMounted(() => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead class="w-[40%]">Item de Inventário</TableHead>
-                  <TableHead class="w-[20%]">Quantidade</TableHead>
-                  <TableHead class="w-[25%]">Preço Unitário (CVE)</TableHead>
+                  <TableHead class="w-[30%]">Item de Inventário</TableHead>
+                  <TableHead class="w-[20%]">Produto</TableHead>
+                  <TableHead class="w-[15%]">Quantidade</TableHead>
+                  <TableHead class="w-[20%]">Preço Unitário (CVE)</TableHead>
                   <TableHead class="w-[10%] text-right">Total</TableHead>
                   <TableHead class="w-[5%]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 <TableRow v-if="lineItems.length === 0">
-                  <TableCell colspan="5" class="text-center text-muted-foreground">
+                  <TableCell colspan="6" class="text-center text-muted-foreground">
                     Clique em "Adicionar Item" para começar
                   </TableCell>
                 </TableRow>
@@ -280,6 +293,11 @@ onMounted(() => {
                         </SelectItem>
                       </SelectContent>
                     </Select>
+                  </TableCell>
+                  <TableCell>
+                    <span class="text-sm text-muted-foreground">
+                      {{ item.inventory_item ? getProductName(item.inventory_item) : '-' }}
+                    </span>
                   </TableCell>
                   <TableCell>
                     <Input
