@@ -178,7 +178,7 @@ onMounted(() => {
 
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <DialogContent class="max-w-7xl max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Nova Ordem de Compra</DialogTitle>
         <DialogDescription>
