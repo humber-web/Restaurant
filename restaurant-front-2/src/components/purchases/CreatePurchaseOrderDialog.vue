@@ -126,7 +126,7 @@ function removeLineItem(id: string) {
 
 function getInventoryItemName(itemId: number): string {
   const item = inventoryItems.value.find(i => i.itemID === itemId)
-  return item?.itemName || `Item #${itemId}`
+  return item?.product_name || `Item #${itemId}`
 }
 
 function getProductName(itemId: number): string {
