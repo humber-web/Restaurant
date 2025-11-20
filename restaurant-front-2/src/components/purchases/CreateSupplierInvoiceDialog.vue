@@ -109,6 +109,24 @@ function handleSupplierChange() {
   selectedPurchaseOrder.value = null
 }
 
+function handlePurchaseOrderChange() {
+  if (!selectedPurchaseOrder.value) return
+
+  // Find the selected purchase order
+  const po = purchaseOrders.value.find(p => p.purchaseOrderID === selectedPurchaseOrder.value)
+  if (!po) return
+
+  // Auto-fill form fields from purchase order
+  amount.value = parseFloat(po.total_amount)
+  // Calculate 15% IVA (Cape Verde tax)
+  taxAmount.value = amount.value * 0.15
+
+  // Auto-fill notes with PO reference
+  if (!notes.value) {
+    notes.value = `Fatura referente à ordem de compra ${po.po_number}`
+  }
+}
+
 function handleAmountChange() {
   // Optionally calculate tax (e.g., 15% IVA in Cape Verde)
   // taxAmount.value = amount.value * 0.15
@@ -217,6 +235,7 @@ onMounted(() => {
           <Select
             v-model="selectedPurchaseOrder"
             :disabled="!selectedSupplier || isLoadingPOs"
+            @update:model-value="handlePurchaseOrderChange"
           >
             <SelectTrigger id="purchase-order">
               <SelectValue placeholder="Associar a uma ordem de compra" />
@@ -233,7 +252,8 @@ onMounted(() => {
             </SelectContent>
           </Select>
           <p class="text-xs text-muted-foreground">
-            Apenas ordens enviadas, parcialmente recebidas ou recebidas aparecem aqui
+            Ao selecionar uma ordem, os valores serão preenchidos automaticamente.
+            Quando a fatura for marcada como paga, o inventário será atualizado automaticamente.
           </p>
         </div>
 
