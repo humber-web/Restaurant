@@ -6,6 +6,7 @@ export interface InventoryItem {
   supplier: number | null // ForeignKey to Supplier
   unit_cost?: string // DecimalField
   menu_item: number | null
+  product_name?: string | null // Name of related menu item (computed from backend)
   oversell_quantity: string // DecimalField
   reorder_level?: string | null // DecimalField
   reorder_quantity?: string | null // DecimalField

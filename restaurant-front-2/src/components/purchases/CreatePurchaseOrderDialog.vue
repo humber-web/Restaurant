@@ -29,8 +29,8 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { suppliersApi } from '@/services/api/suppliers'
-import { inventoryApi, menuApi } from '@/services/api'
-import type { InventoryItem, MenuItem } from '@/types/models'
+import { inventoryApi } from '@/services/api'
+import type { InventoryItem } from '@/types/models'
 import type { Supplier } from '@/types/models/supplier'
 import type { CreatePurchaseOrderRequest } from '@/types/models'
 import { get } from 'node_modules/axios/index.d.cts'
@@ -50,7 +50,6 @@ const emit = defineEmits<Emits>()
 // Data
 const suppliers = ref<Supplier[]>([])
 const inventoryItems = ref<InventoryItem[]>([])
-const menuItems = ref<MenuItem[]>([])
 const isLoadingSuppliers = ref(false)
 const isLoadingInventory = ref(false)
 const isSubmitting = ref(false)
@@ -98,14 +97,12 @@ async function loadData() {
   isLoadingInventory.value = true
 
   try {
-    const [suppliersData, inventoryData, menuItemsData] = await Promise.all([
+    const [suppliersData, inventoryData] = await Promise.all([
       suppliersApi.listActive(),
-      inventoryApi.getItems(),
-      menuApi.getItems()
+      inventoryApi.getItems()
     ])
     suppliers.value = suppliersData
     inventoryItems.value = inventoryData
-    menuItems.value = menuItemsData
   } catch (error) {
     console.error('Error loading data:', error)
   } finally {
@@ -134,11 +131,7 @@ function getInventoryItemName(itemId: number): string {
 
 function getProductName(itemId: number): string {
   const invItem = inventoryItems.value.find(i => i.itemID === itemId)
-  if (!invItem || !invItem.menu_item) {
-    return '-'
-  }
-  const menuItem = menuItems.value.find(m => m.itemID === invItem.menu_item)
-  return menuItem?.name || '-'
+  return invItem?.product_name || '-'
 }
 
 function handleClose() {
