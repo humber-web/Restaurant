@@ -130,7 +130,7 @@ function formatCurrency(amount: string) {
 
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="max-w-5xl max-h-[90vh] overflow-y-auto">
+    <DialogContent class="min-w-5xl max-w-5xl max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Detalhes da Ordem de Compra</DialogTitle>
         <DialogDescription>
