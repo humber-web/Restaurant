@@ -313,7 +313,12 @@ class SupplierInvoice(models.Model):
         return f"{self.invoice_number} - {self.supplier.company_name}"
 
     def mark_as_paid(self, payment_date=None, payment_method=None):
-        """Mark invoice as paid."""
+        """
+        Mark invoice as paid.
+
+        If linked to a purchase order, automatically receive any unreceived goods
+        and update inventory.
+        """
         from django.utils import timezone
 
         self.status = 'PAID'
@@ -321,7 +326,18 @@ class SupplierInvoice(models.Model):
         self.payment_method = payment_method
         self.save()
 
-        # Update related purchase order status if exists
+        # Update related purchase order and receive goods
         if self.purchase_order:
+            # Automatically receive all unreceived goods from the purchase order
+            for po_item in self.purchase_order.items.all():
+                remaining_qty = po_item.quantity_ordered - po_item.received_quantity
+                if remaining_qty > 0:
+                    # Receive the remaining quantity
+                    po_item.receive_goods(
+                        quantity=remaining_qty,
+                        date=self.payment_date
+                    )
+
+            # Update purchase order status
             self.purchase_order.status = 'PAID'
             self.purchase_order.save()
