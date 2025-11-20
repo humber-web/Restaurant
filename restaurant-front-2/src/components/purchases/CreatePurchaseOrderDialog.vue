@@ -33,6 +33,7 @@ import { inventoryApi } from '@/services/api'
 import type { InventoryItem } from '@/types/models'
 import type { Supplier } from '@/types/models/supplier'
 import type { CreatePurchaseOrderRequest } from '@/types/models'
+import { get } from 'node_modules/axios/index.d.cts'
 
 interface Props {
   open: boolean
@@ -183,7 +184,7 @@ onMounted(() => {
 
 <template>
   <Dialog :open="open" @update:open="emit('update:open', $event)">
-    <DialogContent class="max-w-4xl max-h-[90vh] overflow-y-auto">
+    <DialogContent class="min-w-3xl max-w-7xl max-h-[90vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>Nova Ordem de Compra</DialogTitle>
         <DialogDescription>
@@ -274,7 +275,11 @@ onMounted(() => {
                       :disabled="isLoadingInventory"
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecionar item" />
+                        <SelectValue placeholder="Selecionar item">
+                          <span v-if="item.inventory_item">
+                            {{ getInventoryItemName(item.inventory_item) }}
+                          </span>
+                        </SelectValue>
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem
@@ -282,7 +287,7 @@ onMounted(() => {
                           :key="invItem.itemID"
                           :value="invItem.itemID"
                         >
-                          {{ invItem.itemName || invItem.product_name || `Item #${invItem.itemID}` }}
+                          {{ getInventoryItemName(invItem.itemID) }}
                         </SelectItem>
                       </SelectContent>
                     </Select>
