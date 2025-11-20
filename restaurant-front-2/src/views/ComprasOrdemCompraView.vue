@@ -22,6 +22,7 @@ import {
 import type { PurchaseOrder, CreatePurchaseOrderRequest } from '@/types/models'
 import { purchasesApi } from '@/services/api'
 import CreatePurchaseOrderDialog from '@/components/purchases/CreatePurchaseOrderDialog.vue'
+import PurchaseOrderDetailsDialog from '@/components/purchases/PurchaseOrderDetailsDialog.vue'
 
 const purchaseOrders = ref<PurchaseOrder[]>([])
 const isLoading = ref(false)
@@ -29,6 +30,8 @@ const statusFilter = ref<string>('ALL')
 const toastMessage = ref<string | null>(null)
 const toastVariant = ref<'success' | 'error'>('success')
 const createDialogOpen = ref(false)
+const detailsDialogOpen = ref(false)
+const selectedPurchaseOrderId = ref<number | null>(null)
 
 // Status badge styling
 const statusColors = {
@@ -120,6 +123,11 @@ async function handleCreatePurchaseOrder(data: CreatePurchaseOrderRequest) {
     showToast('Erro ao criar ordem de compra', 'error')
     console.error('Error creating purchase order:', error)
   }
+}
+
+function handleViewDetails(purchaseOrderId: number) {
+  selectedPurchaseOrderId.value = purchaseOrderId
+  detailsDialogOpen.value = true
 }
 </script>
 
@@ -268,7 +276,9 @@ async function handleCreatePurchaseOrder(data: CreatePurchaseOrderRequest) {
                 {{ formatCurrency(po.total_amount) }}
               </TableCell>
               <TableCell>
-                <Button variant="ghost" size="sm">Ver Detalhes</Button>
+                <Button variant="ghost" size="sm" @click="handleViewDetails(po.purchaseOrderID)">
+                  Ver Detalhes
+                </Button>
               </TableCell>
             </TableRow>
           </TableBody>
@@ -280,6 +290,12 @@ async function handleCreatePurchaseOrder(data: CreatePurchaseOrderRequest) {
     <CreatePurchaseOrderDialog
       v-model:open="createDialogOpen"
       @submit="handleCreatePurchaseOrder"
+    />
+
+    <!-- Purchase Order Details Dialog -->
+    <PurchaseOrderDetailsDialog
+      v-model:open="detailsDialogOpen"
+      :purchase-order-id="selectedPurchaseOrderId"
     />
   </div>
 </template>

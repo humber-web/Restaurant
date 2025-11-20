@@ -11,20 +11,27 @@ from decimal import Decimal
 class PurchaseOrderItemSerializer(serializers.ModelSerializer):
     """Serializer for Purchase Order line items."""
     inventory_item_name = serializers.SerializerMethodField()
+    product_name = serializers.SerializerMethodField()
     line_total = serializers.SerializerMethodField()
     remaining_quantity = serializers.SerializerMethodField()
 
     class Meta:
         model = PurchaseOrderItem
         fields = [
-            'id', 'purchase_order', 'inventory_item', 'inventory_item_name',
+            'id', 'purchase_order', 'inventory_item', 'inventory_item_name', 'product_name',
             'quantity_ordered', 'unit_price', 'line_total',
             'received_quantity', 'remaining_quantity', 'received_date', 'notes'
         ]
-        read_only_fields = ['id', 'inventory_item_name', 'line_total', 'remaining_quantity']
+        read_only_fields = ['id', 'inventory_item_name', 'product_name', 'line_total', 'remaining_quantity']
 
     def get_inventory_item_name(self, obj):
         return obj.inventory_item.itemName if obj.inventory_item else None
+
+    def get_product_name(self, obj):
+        """Get the name of the related menu item (product)."""
+        if obj.inventory_item and obj.inventory_item.menu_item:
+            return obj.inventory_item.menu_item.name
+        return None
 
     def get_line_total(self, obj):
         return str(obj.line_total)
