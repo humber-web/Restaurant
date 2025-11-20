@@ -248,7 +248,7 @@ class SAFTExportService:
         SubElement(invoice, 'SystemEntryDate').text = payment.created_at.strftime('%Y-%m-%dT%H:%M:%S')
 
         # Customer ID
-        customer_id = str(payment.order.customer.id) if payment.order.customer else 'FINAL'
+        customer_id = str(payment.order.customer.customerID) if payment.order.customer else 'FINAL'
         SubElement(invoice, 'CustomerID').text = customer_id
 
         # Credit Note specific fields: References to original document
