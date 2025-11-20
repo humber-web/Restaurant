@@ -296,6 +296,7 @@ function handleViewDetails(purchaseOrderId: number) {
     <PurchaseOrderDetailsDialog
       v-model:open="detailsDialogOpen"
       :purchase-order-id="selectedPurchaseOrderId"
+      @updated="fetchPurchaseOrders"
     />
   </div>
 </template>

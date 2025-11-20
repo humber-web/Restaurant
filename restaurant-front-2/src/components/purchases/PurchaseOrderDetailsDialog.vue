@@ -11,6 +11,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
   Table,
   TableBody,
   TableCell,
@@ -28,6 +35,7 @@ interface Props {
 
 interface Emits {
   (e: 'update:open', value: boolean): void
+  (e: 'updated'): void
 }
 
 const props = defineProps<Props>()
@@ -35,6 +43,8 @@ const emit = defineEmits<Emits>()
 
 const purchaseOrder = ref<PurchaseOrder | null>(null)
 const isLoading = ref(false)
+const isUpdatingStatus = ref(false)
+const selectedStatus = ref<string>('')
 
 // Status badge styling
 const statusColors = {
@@ -68,10 +78,33 @@ async function fetchPurchaseOrder(id: number) {
   isLoading.value = true
   try {
     purchaseOrder.value = await purchasesApi.getPurchaseOrder(id)
+    selectedStatus.value = purchaseOrder.value.status
   } catch (error) {
     console.error('Error loading purchase order:', error)
   } finally {
     isLoading.value = false
+  }
+}
+
+async function handleStatusUpdate() {
+  if (!purchaseOrder.value || selectedStatus.value === purchaseOrder.value.status) {
+    return
+  }
+
+  isUpdatingStatus.value = true
+  try {
+    await purchasesApi.updatePurchaseOrder(purchaseOrder.value.purchaseOrderID, {
+      status: selectedStatus.value as any
+    })
+    // Refresh the purchase order data
+    await fetchPurchaseOrder(purchaseOrder.value.purchaseOrderID)
+    emit('updated')
+  } catch (error) {
+    console.error('Error updating status:', error)
+    // Reset to original status on error
+    selectedStatus.value = purchaseOrder.value.status
+  } finally {
+    isUpdatingStatus.value = false
   }
 }
 
@@ -123,10 +156,29 @@ function formatCurrency(amount: string) {
           </div>
           <div>
             <label class="text-sm font-medium text-muted-foreground">Estado</label>
-            <div class="mt-1">
-              <Badge :class="statusColors[purchaseOrder.status]" variant="outline">
-                {{ statusLabels[purchaseOrder.status] }}
-              </Badge>
+            <div class="mt-1 flex items-center gap-2">
+              <Select v-model="selectedStatus" :disabled="isUpdatingStatus">
+                <SelectTrigger class="w-[220px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="DRAFT">Rascunho</SelectItem>
+                  <SelectItem value="SUBMITTED">Enviado</SelectItem>
+                  <SelectItem value="PARTIALLY_RECEIVED">Parcialmente Recebido</SelectItem>
+                  <SelectItem value="RECEIVED">Recebido</SelectItem>
+                  <SelectItem value="INVOICED">Faturado</SelectItem>
+                  <SelectItem value="PAID">Pago</SelectItem>
+                  <SelectItem value="CANCELLED">Cancelado</SelectItem>
+                </SelectContent>
+              </Select>
+              <Button
+                v-if="selectedStatus !== purchaseOrder.status"
+                size="sm"
+                @click="handleStatusUpdate"
+                :disabled="isUpdatingStatus"
+              >
+                {{ isUpdatingStatus ? 'A guardar...' : 'Guardar' }}
+              </Button>
             </div>
           </div>
           <div>
