@@ -61,9 +61,11 @@ const totalAmount = computed(() => {
 
 const filteredPurchaseOrders = computed(() => {
   if (!selectedSupplier.value) return []
+  // Only show purchase orders that are active and can be invoiced
+  // Exclude DRAFT (not finalized), INVOICED/PAID (already invoiced), and CANCELLED
   return purchaseOrders.value.filter(po =>
     po.supplier === selectedSupplier.value &&
-    ['RECEIVED', 'INVOICED'].includes(po.status)
+    ['SUBMITTED', 'PARTIALLY_RECEIVED', 'RECEIVED'].includes(po.status)
   )
 })
 
@@ -75,6 +77,12 @@ const isFormValid = computed(() => {
     amount.value > 0
   )
 })
+
+const statusLabels: Record<string, string> = {
+  SUBMITTED: 'Enviado',
+  PARTIALLY_RECEIVED: 'Parcialmente Recebido',
+  RECEIVED: 'Recebido',
+}
 
 // Methods
 async function loadData() {
@@ -220,12 +228,12 @@ onMounted(() => {
                 :key="po.purchaseOrderID"
                 :value="po.purchaseOrderID"
               >
-                {{ po.po_number }} - {{ po.total_amount }} CVE
+                {{ po.po_number }} - {{ po.total_amount }} CVE ({{ statusLabels[po.status] }})
               </SelectItem>
             </SelectContent>
           </Select>
           <p class="text-xs text-muted-foreground">
-            Opcional: Vincular esta fatura a uma ordem de compra existente
+            Apenas ordens enviadas, parcialmente recebidas ou recebidas aparecem aqui
           </p>
         </div>
 
