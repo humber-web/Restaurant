@@ -30,6 +30,7 @@ export interface PurchaseOrderItem {
   purchase_order: number
   inventory_item: number
   inventory_item_name?: string
+  product_name?: string | null
   quantity_ordered: string
   unit_price: string
   line_total?: string
