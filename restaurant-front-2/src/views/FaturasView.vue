@@ -342,7 +342,7 @@ onMounted(() => {
 
     <!-- Detail Dialog -->
     <Dialog v-model:open="showDetailDialog">
-      <DialogContent class="max-w-2xl">
+      <DialogContent class="max-w-2xl max-h-[80vh] overflow-auto">
         <DialogHeader>
           <DialogTitle>Detalhes da Fatura</DialogTitle>
           <DialogDescription>

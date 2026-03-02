@@ -181,7 +181,7 @@ function getColumnLabel(column: any): string {
     </div>
 
     <!-- Table -->
-    <div class="rounded-md border">
+    <div class="rounded-md border w-full overflow-auto">
       <Table>
         <TableHeader>
           <TableRow v-for="headerGroup in table.getHeaderGroups()" :key="headerGroup.id">

@@ -1,18 +1,22 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
-import { customersApi } from '@/services/api/customers'
-import type { Customer, CreateCustomerPayload, CustomerType } from '@/types/models/customer'
-import CustomersTableAdvanced from '@/components/customers/CustomersTableAdvanced.vue'
+import { ref, onMounted } from "vue";
+import { customersApi } from "@/services/api/customers";
+import type {
+  Customer,
+  CreateCustomerPayload,
+  CustomerType,
+} from "@/types/models/customer";
+import CustomersTableAdvanced from "@/components/customers/CustomersTableAdvanced.vue";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
@@ -20,16 +24,16 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog'
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select'
-import { Textarea } from '@/components/ui/textarea'
-import { Badge } from '@/components/ui/badge'
+} from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,144 +43,147 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
-import { Users, Plus, Filter, X } from 'lucide-vue-next'
+} from "@/components/ui/alert-dialog";
+import { Users, Plus, Filter, X } from "lucide-vue-next";
 
 // Toast notifications
-const toastMessage = ref<string | null>(null)
-const toastVariant = ref<'success' | 'error'>('success')
+const toastMessage = ref<string | null>(null);
+const toastVariant = ref<"success" | "error">("success");
 
-function showToast(message: string, variant: 'success' | 'error' = 'success') {
-  toastMessage.value = message
-  toastVariant.value = variant
+function showToast(message: string, variant: "success" | "error" = "success") {
+  toastMessage.value = message;
+  toastVariant.value = variant;
   setTimeout(() => {
-    toastMessage.value = null
-  }, 3000)
+    toastMessage.value = null;
+  }, 3000);
 }
 
 // State
-const customers = ref<Customer[]>([])
-const isLoading = ref(false)
+const customers = ref<Customer[]>([]);
+const isLoading = ref(false);
 
 // Filters
-const filterType = ref<CustomerType | ''>('')
-const filterActive = ref<boolean | ''>('')
-const searchQuery = ref('')
+const filterType = ref<CustomerType | "all">("all");
+const filterActive = ref<"true" | "false" | "all">("all");
+const searchQuery = ref("");
 
 // Dialogs
-const showCreateDialog = ref(false)
-const showEditDialog = ref(false)
-const showViewDialog = ref(false)
-const showDeleteDialog = ref(false)
-const selectedCustomer = ref<Customer | null>(null)
+const showCreateDialog = ref(false);
+const showEditDialog = ref(false);
+const showViewDialog = ref(false);
+const showDeleteDialog = ref(false);
+const selectedCustomer = ref<Customer | null>(null);
 
 // Form data
 const formData = ref<CreateCustomerPayload>({
-  customer_type: 'INDIVIDUAL',
-  tax_id: '',
-  company_name: '',
-  first_name: '',
-  last_name: '',
-  street_name: '',
-  building_number: '',
-  city: '',
-  postal_code: '',
-  region: '',
-  country: 'CV',
-  address_detail: '',
-  telephone: '',
-  mobile_phone: '',
-  fax: '',
-  email: '',
-  website: '',
-  notes: '',
-})
+  customer_type: "INDIVIDUAL",
+  tax_id: "",
+  company_name: "",
+  first_name: "",
+  last_name: "",
+  street_name: "",
+  building_number: "",
+  city: "",
+  postal_code: "",
+  region: "",
+  country: "CV",
+  address_detail: "",
+  telephone: "",
+  mobile_phone: "",
+  fax: "",
+  email: "",
+  website: "",
+  notes: "",
+});
 
 // Load customers
 async function loadCustomers() {
   try {
-    isLoading.value = true
+    isLoading.value = true;
 
-    const params: any = {}
-    if (filterType.value) params.customer_type = filterType.value
-    if (filterActive.value !== '') params.is_active = filterActive.value
-    if (searchQuery.value) params.search = searchQuery.value
+    const params: any = {};
+    if (filterType.value !== "all") params.customer_type = filterType.value;
+    if (filterActive.value !== "all") params.is_active = filterActive.value;
+    if (searchQuery.value) params.search = searchQuery.value;
 
-    customers.value = await customersApi.list(params)
+    customers.value = await customersApi.list(params);
   } catch (error: any) {
-    showToast(error.response?.data?.detail || 'Erro ao carregar clientes', 'error')
+    showToast(
+      error.response?.data?.detail || "Erro ao carregar clientes",
+      "error",
+    );
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
 }
 
 // Apply filters
 function applyFilters() {
-  loadCustomers()
+  loadCustomers();
 }
 
 // Clear filters
 function clearFilters() {
-  filterType.value = ''
-  filterActive.value = ''
-  searchQuery.value = ''
-  loadCustomers()
+  filterType.value = "all";
+  filterActive.value = "all";
+  searchQuery.value = "";
+  loadCustomers();
 }
 
 // Reset form
 function resetForm() {
   formData.value = {
-    customer_type: 'INDIVIDUAL',
-    tax_id: '',
-    company_name: '',
-    first_name: '',
-    last_name: '',
-    street_name: '',
-    city: '',
-    postal_code: '',
-    region: '',
-    country: 'CV',
-    address_detail: '',
-    telephone: '',
-    mobile_phone: '',
-    fax: '',
-    email: '',
-    website: '',
-    notes: '',
-  }
+    customer_type: "INDIVIDUAL",
+    tax_id: "",
+    company_name: "",
+    first_name: "",
+    last_name: "",
+    street_name: "",
+    city: "",
+    postal_code: "",
+    region: "",
+    country: "CV",
+    address_detail: "",
+    telephone: "",
+    mobile_phone: "",
+    fax: "",
+    email: "",
+    website: "",
+    notes: "",
+  };
 }
 
 // Open create dialog
 function openCreateDialog() {
-  resetForm()
-  showCreateDialog.value = true
+  resetForm();
+  showCreateDialog.value = true;
 }
 
 // Create customer
 async function createCustomer() {
   try {
-    isLoading.value = true
-    await customersApi.create(formData.value)
-    showToast('Cliente criado com sucesso!', 'success')
-    showCreateDialog.value = false
-    loadCustomers()
-    resetForm()
+    isLoading.value = true;
+    await customersApi.create(formData.value);
+    showToast("Cliente criado com sucesso!", "success");
+    showCreateDialog.value = false;
+    loadCustomers();
+    resetForm();
   } catch (error: any) {
-    showToast(error.response?.data?.detail || 'Erro ao criar cliente', 'error')
+    showToast(error.response?.data?.detail || "Erro ao criar cliente", "error");
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
 }
 
 // View customer
 function viewCustomer(customer: Customer) {
-  selectedCustomer.value = customer
-  showViewDialog.value = true
+  selectedCustomer.value = customer;
+  showViewDialog.value = true;
 }
 
 // Open edit dialog
 function editCustomer(customer: Customer) {
-  selectedCustomer.value = customer
+  selectedCustomer.value = customer;
   formData.value = {
     customer_type: customer.customer_type,
     tax_id: customer.tax_id,
@@ -196,54 +203,63 @@ function editCustomer(customer: Customer) {
     email: customer.email,
     website: customer.website,
     notes: customer.notes,
-  }
-  showEditDialog.value = true
+  };
+  showEditDialog.value = true;
 }
 
 // Update customer
 async function updateCustomer() {
-  if (!selectedCustomer.value) return
+  if (!selectedCustomer.value) return;
 
   try {
-    isLoading.value = true
-    await customersApi.update(selectedCustomer.value.customerID, formData.value)
-    showToast('Cliente atualizado com sucesso!', 'success')
-    showEditDialog.value = false
-    loadCustomers()
-    resetForm()
+    isLoading.value = true;
+    await customersApi.update(
+      selectedCustomer.value.customerID,
+      formData.value,
+    );
+    showToast("Cliente atualizado com sucesso!", "success");
+    showEditDialog.value = false;
+    loadCustomers();
+    resetForm();
   } catch (error: any) {
-    showToast(error.response?.data?.detail || 'Erro ao atualizar cliente', 'error')
+    showToast(
+      error.response?.data?.detail || "Erro ao atualizar cliente",
+      "error",
+    );
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
 }
 
 // Open delete dialog
 function openDeleteDialog(customer: Customer) {
-  selectedCustomer.value = customer
-  showDeleteDialog.value = true
+  selectedCustomer.value = customer;
+  showDeleteDialog.value = true;
 }
 
 // Delete customer (soft delete)
 async function deleteCustomer() {
-  if (!selectedCustomer.value) return
+  if (!selectedCustomer.value) return;
 
   try {
-    isLoading.value = true
-    await customersApi.delete(selectedCustomer.value.customerID)
-    showToast('Cliente desativado com sucesso!', 'success')
-    showDeleteDialog.value = false
-    loadCustomers()
+    isLoading.value = true;
+    await customersApi.delete(selectedCustomer.value.customerID);
+    showToast("Cliente desativado com sucesso!", "success");
+    showDeleteDialog.value = false;
+    loadCustomers();
   } catch (error: any) {
-    showToast(error.response?.data?.detail || 'Erro ao desativar cliente', 'error')
+    showToast(
+      error.response?.data?.detail || "Erro ao desativar cliente",
+      "error",
+    );
   } finally {
-    isLoading.value = false
+    isLoading.value = false;
   }
 }
 
 onMounted(() => {
-  loadCustomers()
-})
+  loadCustomers();
+});
 </script>
 
 <template>
@@ -252,7 +268,11 @@ onMounted(() => {
     <div
       v-if="toastMessage"
       class="fixed top-4 right-4 z-50 rounded-lg border px-4 py-3 shadow-lg transition-all"
-      :class="toastVariant === 'success' ? 'bg-green-50 border-green-200 text-green-900' : 'bg-red-50 border-red-200 text-red-900'"
+      :class="
+        toastVariant === 'success'
+          ? 'bg-green-50 border-green-200 text-green-900'
+          : 'bg-red-50 border-red-200 text-red-900'
+      "
     >
       {{ toastMessage }}
     </div>
@@ -288,7 +308,7 @@ onMounted(() => {
                 <SelectValue placeholder="Todos os tipos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="INDIVIDUAL">Individual</SelectItem>
                 <SelectItem value="COMPANY">Empresa</SelectItem>
               </SelectContent>
@@ -302,9 +322,9 @@ onMounted(() => {
                 <SelectValue placeholder="Todos os estados" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos</SelectItem>
-                <SelectItem :value="true">Ativos</SelectItem>
-                <SelectItem :value="false">Inativos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="true">Ativos</SelectItem>
+                <SelectItem value="false">Inativos</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -348,7 +368,10 @@ onMounted(() => {
           <p class="text-muted-foreground">A carregar clientes...</p>
         </div>
 
-        <div v-else-if="customers.length === 0" class="flex items-center justify-center h-full">
+        <div
+          v-else-if="customers.length === 0"
+          class="flex items-center justify-center h-full"
+        >
           <div class="text-center">
             <Users class="h-12 w-12 text-muted-foreground mx-auto mb-4" />
             <p class="text-muted-foreground">Nenhum cliente encontrado</p>
@@ -412,7 +435,10 @@ onMounted(() => {
           </div>
 
           <!-- Individual Name (if INDIVIDUAL) -->
-          <div v-if="formData.customer_type === 'INDIVIDUAL'" class="grid grid-cols-2 gap-4">
+          <div
+            v-if="formData.customer_type === 'INDIVIDUAL'"
+            class="grid grid-cols-2 gap-4"
+          >
             <div class="space-y-2">
               <Label for="first_name">Primeiro Nome</Label>
               <Input id="first_name" v-model="formData.first_name" />
@@ -433,7 +459,10 @@ onMounted(() => {
               </div>
               <div class="space-y-2">
                 <Label for="building_number">Número</Label>
-                <Input id="building_number" v-model="formData.building_number" />
+                <Input
+                  id="building_number"
+                  v-model="formData.building_number"
+                />
               </div>
             </div>
 
@@ -444,7 +473,11 @@ onMounted(() => {
               </div>
               <div class="space-y-2">
                 <Label for="postal_code">Código Postal *</Label>
-                <Input id="postal_code" v-model="formData.postal_code" placeholder="7600-000" />
+                <Input
+                  id="postal_code"
+                  v-model="formData.postal_code"
+                  placeholder="7600-000"
+                />
               </div>
               <div class="space-y-2">
                 <Label for="region">Região</Label>
@@ -492,8 +525,12 @@ onMounted(() => {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" @click="showCreateDialog = false">Cancelar</Button>
-          <Button @click="createCustomer" :disabled="isLoading">Criar Cliente</Button>
+          <Button variant="outline" @click="showCreateDialog = false"
+            >Cancelar</Button
+          >
+          <Button @click="createCustomer" :disabled="isLoading"
+            >Criar Cliente</Button
+          >
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -540,8 +577,12 @@ onMounted(() => {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" @click="showEditDialog = false">Cancelar</Button>
-          <Button @click="updateCustomer" :disabled="isLoading">Atualizar</Button>
+          <Button variant="outline" @click="showEditDialog = false"
+            >Cancelar</Button
+          >
+          <Button @click="updateCustomer" :disabled="isLoading"
+            >Atualizar</Button
+          >
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -562,8 +603,18 @@ onMounted(() => {
             <div>
               <Label class="text-muted-foreground">Tipo</Label>
               <div class="mt-1">
-                <Badge :variant="selectedCustomer.customer_type === 'COMPANY' ? 'default' : 'secondary'">
-                  {{ selectedCustomer.customer_type === 'COMPANY' ? 'Empresa' : 'Individual' }}
+                <Badge
+                  :variant="
+                    selectedCustomer.customer_type === 'COMPANY'
+                      ? 'default'
+                      : 'secondary'
+                  "
+                >
+                  {{
+                    selectedCustomer.customer_type === "COMPANY"
+                      ? "Empresa"
+                      : "Individual"
+                  }}
                 </Badge>
               </div>
             </div>
@@ -571,7 +622,9 @@ onMounted(() => {
 
           <div>
             <Label class="text-muted-foreground">Nome</Label>
-            <p class="text-lg font-semibold">{{ selectedCustomer.full_name }}</p>
+            <p class="text-lg font-semibold">
+              {{ selectedCustomer.full_name }}
+            </p>
           </div>
 
           <div>
@@ -587,19 +640,23 @@ onMounted(() => {
           <div class="grid grid-cols-2 gap-4">
             <div>
               <Label class="text-muted-foreground">Telefone</Label>
-              <p>{{ selectedCustomer.telephone || 'N/A' }}</p>
+              <p>{{ selectedCustomer.telephone || "N/A" }}</p>
             </div>
             <div>
               <Label class="text-muted-foreground">Email</Label>
-              <p>{{ selectedCustomer.email || 'N/A' }}</p>
+              <p>{{ selectedCustomer.email || "N/A" }}</p>
             </div>
           </div>
 
           <div>
             <Label class="text-muted-foreground">Estado</Label>
             <div class="mt-1">
-              <Badge :variant="selectedCustomer.is_active ? 'default' : 'destructive'">
-                {{ selectedCustomer.is_active ? 'Ativo' : 'Inativo' }}
+              <Badge
+                :variant="
+                  selectedCustomer.is_active ? 'default' : 'destructive'
+                "
+              >
+                {{ selectedCustomer.is_active ? "Ativo" : "Inativo" }}
               </Badge>
             </div>
           </div>
@@ -611,7 +668,9 @@ onMounted(() => {
         </div>
 
         <DialogFooter>
-          <Button variant="outline" @click="showViewDialog = false">Fechar</Button>
+          <Button variant="outline" @click="showViewDialog = false"
+            >Fechar</Button
+          >
           <Button @click="editCustomer(selectedCustomer!)">Editar</Button>
         </DialogFooter>
       </DialogContent>
@@ -624,14 +683,17 @@ onMounted(() => {
           <AlertDialogTitle>Desativar Cliente?</AlertDialogTitle>
           <AlertDialogDescription>
             Tem a certeza que deseja desativar o cliente
-            <strong>{{ selectedCustomer?.full_name }}</strong>?
-            <br><br>
-            O cliente será marcado como inativo mas permanecerá no sistema para histórico.
+            <strong>{{ selectedCustomer?.full_name }}</strong
+            >? <br /><br />
+            O cliente será marcado como inativo mas permanecerá no sistema para
+            histórico.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel>Cancelar</AlertDialogCancel>
-          <AlertDialogAction @click="deleteCustomer">Desativar</AlertDialogAction>
+          <AlertDialogAction @click="deleteCustomer"
+            >Desativar</AlertDialogAction
+          >
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>

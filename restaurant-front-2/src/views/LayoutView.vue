@@ -27,7 +27,10 @@ import {
           <ThemeToggle />
         </div>
       </header>
-      <router-view/>
+      <!-- Add a wrapper to constrain child content -->
+      <div class="flex-1 overflow-x-auto max-w-full">
+        <router-view />
+      </div>
     </SidebarInset>
   </SidebarProvider>
 </template>
