@@ -349,23 +349,23 @@ onMounted(() => {
         :key="index"
         :class="[
           'border-l-4',
-          alert.type === 'error' ? 'border-l-red-500 bg-red-50' : '',
-          alert.type === 'warning' ? 'border-l-orange-500 bg-orange-50' : '',
-          alert.type === 'info' ? 'border-l-blue-500 bg-blue-50' : '',
+          alert.type === 'error' ? 'border-l-red-500 bg-red-50 dark:bg-red-900 dark:border-red-700' : '',
+          alert.type === 'warning' ? 'border-l-orange-500 bg-orange-50 dark:bg-orange-900 dark:border-orange-700' : '',
+          alert.type === 'info' ? 'border-l-blue-500 bg-blue-50 dark:bg-blue-900 dark:border-blue-700' : '',
         ]"
       >
         <CardContent class="flex items-center gap-3 py-3">
           <AlertCircle :class="[
             'h-5 w-5',
-            alert.type === 'error' ? 'text-red-600' : '',
-            alert.type === 'warning' ? 'text-orange-600' : '',
-            alert.type === 'info' ? 'text-blue-600' : '',
+            alert.type === 'error' ? 'text-red-600 dark:text-red-300' : '',
+            alert.type === 'warning' ? 'text-orange-600 dark:text-orange-300' : '',
+            alert.type === 'info' ? 'text-blue-600 dark:text-blue-300' : '',
           ]" />
           <p :class="[
             'font-medium',
-            alert.type === 'error' ? 'text-red-900' : '',
-            alert.type === 'warning' ? 'text-orange-900' : '',
-            alert.type === 'info' ? 'text-blue-900' : '',
+            alert.type === 'error' ? 'text-red-900 dark:text-red-100' : '',
+            alert.type === 'warning' ? 'text-orange-900 dark:text-orange-100' : '',
+            alert.type === 'info' ? 'text-blue-900 dark:text-blue-100' : '',
           ]">
             {{ alert.message }}
           </p>
